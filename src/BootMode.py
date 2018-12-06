@@ -8,6 +8,7 @@ class BootMode :
 		self.wlan_sta =  core.network.WLAN(core.network.STA_IF)
 		self.status = 'start'
 		self.content = ''
+		self.success = False
 	async def connect(self, ssid, password):
 		self.wlan_sta.active(True)
 		self.wlan_sta.connect(ssid, password)
@@ -22,6 +23,8 @@ class BootMode :
 		if self.wlan_sta.isconnected():
 			#indicator.animate('pulse',(0,100,50),10)
 			print('\nConnected. Network config:', self.wlan_sta.ifconfig())
+			while not self.success :
+				await core.asyncio.sleep_ms(200)
 			self.wifi_status = 1
 			return True
 		else : 
@@ -50,6 +53,7 @@ class BootMode :
 		print('Get check status request')
 		if core.flag.wifi == True:
 			content = 'OK'
+			self.success = True
 		elif core.flag.wifi == False:
 			content = 'Failed'
 		else:	
@@ -156,21 +160,17 @@ class BootMode :
 		# Blocky that shine red will be 'Blocky RED <uuid>'
 		color = []
 		n=5
-		if max_index == 0 : color = ['red',(255//n,59//n,48//n)]
-		if max_index == 1 : color = ['green',(76//n,217//n,100//n)]
-		if max_index == 2 : color = ['blue',(0,122//n,255//n)]
-		if max_index == 3 : color = ['pink',(255//n,45//n,85//n)]
-		if max_index == 4 : color = ['purple',(88//n,86//n,214//n)]
-		if max_index == 5 : color = ['yello',(255//n,204//n,0)]
+		if max_index == 0 : color = ['red',	(255//n,0//n,0//n)]
+		if max_index == 1 : color = ['green',	(0//n,255//n,0//n)]
+		if max_index == 2 : color = ['blue',	(0//n,0//n,255//n)]
+		if max_index == 3 : color = ['white',(50//n,50//n,50//n)]
+		if max_index == 4 : color = ['purple',(100//n,0//n,100//n)]
+		if max_index == 5 : color = ['yello', (100//n,100//n,0//n)]
 		
 		core.indicator.rgb.fill(color[1]);core.indicator.rgb.write()
-		if core.eeprom.get('first_start') == 1:
-			# when Blocky.Global.flag_ONLINE is True , it stop
-			ap_name = "It's me , your " + color[0].upper() + ' Blocky'
-		else :
-			core.mainthread.create_task(core.indicator.heartbeat( color[1] , 1 ,core.flag.wifi , 5) )
-			ap_name = 'Blocky ' + color[0].upper() +' '+ core.binascii.hexlify(core.machine.unique_id()).decode('ascii')[0:4]
-		
+		core.mainthread.create_task(core.indicator.heartbeat( color[1] , 1 ,core.flag.wifi , 5) )
+		ap_name = 'Blocky ' + color[0].upper() +' '+ core.binascii.hexlify(core.machine.unique_id()).decode('ascii')[0:4]
+	
 		print(ap_name)
 		
 		
