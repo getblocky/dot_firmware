@@ -6,9 +6,12 @@ class BootMode :
 	def __init__ (self):
 		self.wlan_ap =  core.network.WLAN(core.network.AP_IF)
 		self.wlan_sta =  core.network.WLAN(core.network.STA_IF)
+		self.wlan_sta.active(True)
+		self.wlan_ap.active(True)
 		self.status = 'start'
 		self.content = ''
-		self.success = False
+		self.success = False #dummy
+		self.server = None
 	async def connect(self, ssid, password):
 		self.wlan_sta.active(True)
 		self.wlan_sta.connect(ssid, password)
@@ -23,8 +26,6 @@ class BootMode :
 		if self.wlan_sta.isconnected():
 			#indicator.animate('pulse',(0,100,50),10)
 			print('\nConnected. Network config:', self.wlan_sta.ifconfig())
-			while not self.success :
-				await core.asyncio.sleep_ms(200)
 			self.wifi_status = 1
 			return True
 		else : 
@@ -50,19 +51,54 @@ class BootMode :
 		
 		
 	def _httpHandlerCheckStatus(self, httpClient, httpResponse):
-		print('Get check status request')
-		if core.flag.wifi == True:
-			content = 'OK'
-			self.success = True
-		elif core.flag.wifi == False:
-			content = 'Failed'
-		else:	
-			content = ''
-		
-		httpResponse.WriteResponseOk(headers = None,
-			contentType	 = "text/html",
-			contentCharset = "UTF-8",
-			content = content)
+		httpResponse.WriteResponseOk(headers = None,contentType= "text/html",	contentCharset = "UTF-8",content = 'OK')
+		print('checking')
+		if self.wlan_sta.isconnected():
+			self.wifi_status = 1
+			print('Connected to ' , request_json['ssid'])
+			config = {}
+			try :
+				config = core.json.loads(open('config.json').read())
+			except :
+				pass
+			if not config.get('known_networks'):
+				config['known_networks'] = [{'ssid': request_json['ssid'], 'password': request_json['password']}]
+			else:
+				exist_ssid = None
+				for n in config['known_networks']:
+					if n['ssid'] == request_json['ssid']:
+						exist_ssid = n
+						break
+				if exist_ssid:
+					exist_ssid['password'] = request_json['password'] # update WIFI password
+					print('Update wifi password')
+				else:
+					# add new WIFI network
+					config['known_networks'].append({'ssid': request_json['ssid'], 'password': request_json['password']})
+					print('Add new network')
+			if len(request_json['token']):
+				config['token'] = request_json['token']
+			
+			f = open('config.json', 'w')
+			f.write(core.json.dumps(config))
+			f.close()
+			core.flag.wifi = True
+			print('Get check status request ->',end = '')
+			
+			httpResponse.WriteResponseOk(headers = None,
+				contentType	 = "text/html",
+				contentCharset = "UTF-8",
+				content = 'OK')
+			if content == 'OK':
+				print('completed')
+				self.server.setup_success()
+		else :
+			core.flag.wifi = False
+			print('.' , end = '')
+			httpResponse.WriteResponseOk(headers = None,
+				contentType	 = "text/html",
+				contentCharset = "UTF-8",
+				content = 'Failed')
 		
 		"""
 		if self.wifi_status == 1:
@@ -78,46 +114,16 @@ class BootMode :
 		self.wifi_status = 0
 		httpResponse.WriteResponseOk(headers = None,contentType= "text/html",	contentCharset = "UTF-8",content = 'OK')
 		self.wlan_sta.connect(request_json['ssid'], request_json['password'])
-		print('client->saveconfig: Trying to connect to ' + str(request_json) , end = '')
-		for x in range(130):
+		
+		#
+		while not self.wlan_sta.isconnected() :
 			core.time.sleep_ms(100)
-			if self.wlan_sta.isconnected():
-				self.wifi_status = 1
-				print('Connected to ' , request_json['ssid'])
-				config = {}
-				try :
-					config = core.json.loads(open('config.json').read())
-				except :
-					pass
-				if not config.get('known_networks'):
-					config['known_networks'] = [{'ssid': request_json['ssid'], 'password': request_json['password']}]
-				else:
-					exist_ssid = None
-					for n in config['known_networks']:
-						if n['ssid'] == request_json['ssid']:
-							exist_ssid = n
-							break
-					if exist_ssid:
-						exist_ssid['password'] = request_json['password'] # update WIFI password
-						print('Update wifi password')
-					else:
-						# add new WIFI network
-						config['known_networks'].append({'ssid': request_json['ssid'], 'password': request_json['password']})
-						print('Add new network')
-				print('Devicename')
-				if len(request_json['deviceName']):
-					config['device_name'] = request_json['deviceName']
-				if len(request_json['token']):
-					config['token'] = request_json['token']
-				
-				f = open('config.json', 'w')
-				f.write(core.json.dumps(config))
-				f.close()
-				core.flag.wifi = True
-				break
-			else :
-				core.flag.wifi = False
-				print('.' , end = '')
+			print('.',end = '')
+		core.machine.reset()
+		#
+		
+		print('client->saveconfig: Trying to connect to ' + str(request_json) , end = '')
+		# we cant wait until the network to be connect here !
 	def is_ascii(self, s):
 		return all(ord(c) < 128 for c in s)
 	
@@ -128,10 +134,10 @@ class BootMode :
 		networks = []
 		raw = self.wlan_sta.scan()
 		for nw in raw:
-			networks.append({'ssid': nw[0].decode('ascii'), 'rssi': nw[3]})
-		
-		content = core.json.dumps(networks)
-		print(len(networks) , 'networks detected')
+			networks.append({'ssid': nw[0], 'rssi': nw[3]})
+		content = core.json.dumps(networks).encode('utf-8')
+		print(content)
+		print(len(networks) , len(content) , type(content) , 'networks detected')
 		httpResponse.WriteResponseOk(headers = None,contentType= "application/json",contentCharset = "UTF-8",content = content)
 		
 	async def Start(self):
@@ -146,7 +152,6 @@ class BootMode :
 		if core.gc.mem_free() < 20000 :
 			core.machine.reset()
 		
-		server = None 
 		id = core.binascii.hexlify(core.machine.unique_id()).decode('ascii')
 		uuid = [id[i:i+2] for i in range(0, len(id), 2)]
 
@@ -194,13 +199,14 @@ class BootMode :
 		]
 		
 		from Blocky.MicroWebSrv import MicroWebSrv
-		server = MicroWebSrv(routeHandlers = routeHandlers)
+		self.server = MicroWebSrv(routeHandlers = routeHandlers)
 		print('bootmode-> started')
 		#loop = asyncio.get_event_loop()
 		#loop.create_task(server.Start())
 		
-		await server.Start()
+		await self.server.Start()
 		print('bootmode-> completed')
+			
 		from machine import reset
 		reset()
 	
