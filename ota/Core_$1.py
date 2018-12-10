@@ -1,4 +1,4 @@
-_running (name):
+syn.NamedTask.is_running (name):
 				await asyncio.sleep_ms(10)
 	#mainthread.call_soon(asyn.NamedTask(name,function))
 	if function != None :
@@ -68,5 +68,4 @@ def get_list_library(file):
 	return r
 	
 def get_library_version(lib):
-	if '{}.py'.format(lib) not in os.listdir('Blocky'):
-		return No
+	if '{}.py'.format(lib) not in os.listdir('Block

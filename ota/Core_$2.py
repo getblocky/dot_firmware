@@ -1,4 +1,5 @@
-ne
+y'):
+		return None
 	line = ''
 	f = open('Blocky/{}.py'.format(lib))
 	while True :
