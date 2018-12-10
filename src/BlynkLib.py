@@ -248,12 +248,11 @@ class Blynk:
 					
 					if er.args[0] != errno.EAGAIN:
 						core.flag.blynk = False
-						print('BlynkSend->EAGAIN')
 						#raise Dont raise , flag instead
 							
 					else:
 						time.sleep_ms(RE_TX_DELAY)
-						retries += 1
+					retries += 1
 	def _close(self, emsg=None):
 		self.conn.close()
 		self.state = DISCONNECTED
@@ -322,7 +321,8 @@ class Blynk:
 			else:
 				self._send(self._format_msg(MSG_EVENT_LOG, event, descr))
 	def log(self,message , http = False):
-		self.virtual_write(127,message,http=http)
+		#self.virtual_write(127,message,http=http)
+		self.virtual_write(device = self._token.decode('utf-8') , pin = 127 , data = message )
 		
 	def sync_all(self):
 		if self.state == AUTHENTICATED:
