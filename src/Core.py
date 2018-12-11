@@ -13,7 +13,7 @@ ota_file = None
 deinit_list = []
 alarm_list = []
 user_namedtask = []
-
+wdt_timer = None
 import time
 import machine
 import neopixel
