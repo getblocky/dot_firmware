@@ -155,7 +155,8 @@ class Blynk:
 								core.ota_file = None
 								core.os.rename('temp_code.py','user_code.py')
 								print('^^~')
-								self.virtual_write(127,'[OTA_DONE]',http = True)
+								#self.virtual_write(127,'[OTA_DONE]',http = True)
+								self.log('[OTA_DONE]')
 								print('User code saved')
 								for x in range(7):
 									core.indicator.rgb.fill((0,x*10,0))
@@ -173,7 +174,7 @@ class Blynk:
 						
 					else :
 						print('Sorry , your code is lock , press config to unlock it')
-						core.blynk.log("[ERROR] You have locked your code , to upload new code , you need to press CONFIG button onboard")
+						self.log("[ERROR] You have locked your code , to upload new code , you need to press CONFIG button onboard")
 					# Run cleanup task here
 					
 				elif (pin in self._vr_pins_write or pin in self._vr_pins_read) :
@@ -322,7 +323,7 @@ class Blynk:
 				self._send(self._format_msg(MSG_EVENT_LOG, event, descr))
 	def log(self,message , http = False):
 		#self.virtual_write(127,message,http=http)
-		self.virtual_write(device = self._token.decode('utf-8') , pin = 127 , data = message )
+		self.virtual_write(device = self._token.decode('utf-8') , pin = 127 , val = message )
 		
 	def sync_all(self):
 		if self.state == AUTHENTICATED:
