@@ -4,7 +4,6 @@ rtc = False
 asyncio = None 
 asyn = None 
 flag = None 
-eeprom = None
 mqtt = None
 BootMode = None
 indicator = None
@@ -14,6 +13,7 @@ deinit_list = []
 alarm_list = []
 user_namedtask = []
 wdt_timer = None
+wifi_list  = {}
 import time
 import machine
 import neopixel
@@ -21,6 +21,7 @@ import binascii
 import json
 import ure
 import gc
+import hashlib
 import network
 import sys
 import micropython
@@ -31,12 +32,14 @@ import urequests
 import random
 import os
 import Blocky.Global as flag
-import Blocky.EEPROM as eeprom
+import Blocky.EEPROM
 import Blocky.uasyncio as asyncio
 import Blocky.asyn as asyn
 import Blocky.Timer as Timer
 from Blocky.Indicator import indicator
 from Blocky.Pin import getPort
+
+eeprom = Blocky.EEPROM.EEPROM('eeprom')
 
 cfn_btn = machine.Pin(12 , machine.Pin.IN , machine.Pin.PULL_UP)
 mainthread = asyncio.get_event_loop()
@@ -101,7 +104,7 @@ def download(filename , path):
 	gc.collect()
 	try :
 		print('[Downloading]  File -> ' + str(filename), end = '')
-		response = urequests.get('https://raw.githubusercontent.com/getblocky/blocky_firmware/master/ESP32/Chopped/lib/{}'.format(filename))
+		response = urequests.get('https://raw.githubusercontent.com/getblocky/dot_firmware/master/ota/{}'.format(filename))
 		if response.status_code == 200 :
 			f = open('temp.py','w')
 			f.write(response.content)
@@ -137,8 +140,9 @@ def get_list_library(file):
 	f = open(file)
 	cell = ''
 	while True :
-		cell += f.read(1)
-		if cell[-2:] == '\n\n':
+		t  = f.read(1)
+		cell += t
+		if cell[-2:] == '\n\n' or len(t)==0:
 			break
 	cell = cell.split('\n')
 	r = []
@@ -170,4 +174,16 @@ def get_library_version(lib):
 		return 0.0
 	f.close()
 	return float(line.split('=')[1])
+	
+"""
+	Patch function , do not use await core.asyncio.sleep_ms(time) with time > 5s , this will block OTA process
+	since it need to wait for the _sleep_ms task to be done.
+	
+	core.asyncio.sleep_ms(time)  ->  core.wait(time)  #ms
+"""
+async def wait ( time ):
+	for x in range( time//500):
+		await asyncio.sleep_ms(500)
+	await asyncio.sleep_ms(time % 500)
+		
 	

@@ -31,7 +31,7 @@ class Indicator :
 			if (b>f): b = max(b-self.gap,0)
 			self.rgb.fill(   (r,g,b) )
 			self.rgb.write()
-			await core.asyncio.sleep_ms(self.speed)
+			await core.wait(self.speed)
 			if callable(exit):
 				if exit() == True :
 					break
@@ -49,10 +49,10 @@ class Indicator :
 			async def handler (self):
 				for x in range(255):
 					self.rgb.fill((x,x,x));self.rgb.write()
-					await core.asyncio.sleep_ms(1)
+					await core.wait(1)
 				for x in range(255,0,-1):
 					self.rgb.fill((x,x,x));self.rgb.write()
-					await core.asyncio.sleep_ms(1)
+					await core.wait(1)
 					
 		elif name == 'blynk-connecting':
 			@core.asyn.rgb.cancellable
@@ -60,10 +60,10 @@ class Indicator :
 				while True :
 					for x in range(255):
 						self.rgb.fill((x,x,x));self.rgb.write()
-						await core.asyncio.sleep_ms(1)
+						await core.wait(1)
 					for x in range(255,0,-1):
 						self.rgb.fill((x,x,x));self.rgb.write()
-						await core.asyncio.sleep_ms(1)
+						await core.wait(1)
 		elif name == 'blynk-authenticating':
 			pass
 		elif name == 'blynk-failed':
@@ -82,7 +82,7 @@ class Indicator :
 					break
 				
 				for x in range(12):
-					await core.asyncio.sleep_ms(gap)
+					await core.wait(gap)
 					self.rgb.fill((0,0,0))
 					for i in range(12) :
 						self.rgb.fill((0,0,0))
@@ -96,28 +96,36 @@ class Indicator :
 		await core.call_once('indicator',temp)
 		
 	def colour (self,start,stop,colour,update=True):
-		if isinstance(colour,str):
-			colour = colour.lstrip('#')
-			colour = tuple(max(0,min(255,int(colour[i:i+2], 16))) for i in (0, 2 ,4))
-		start = max(1,start)
-		stop = min(12,stop)
-		if start > stop :
-			return
-		for x in range(start,stop+1):
-			self.rgb[x-1] = colour
-		if update == True :
-			self.rgb.write()
+		try :
+			if isinstance(colour,str):
+				colour = colour.lstrip('#')
+				colour = list(max(0,min(255,int(colour[i:i+2], 16))) for i in (0, 2 ,4))
+				
+				for x in range(3):
+					colour[x] = colour[x] // 10
+				colour = tuple(colour)
+				
+			start = max(1,int(start))
+			stop = min(12,int(stop))
+			if start > stop :
+				return
+			for x in range(start,stop+1):
+				self.rgb[x-1] = colour
+			if update == True :
+				self.rgb.write()
+		except :
+			pass
 	async def pulse ( self , color , speed=10,gap = 1):
 		@core.asyn.cancellable
 		async def temp ():
 			while color != self.rgb[0]:
 				self.rgb.fill( ( min(color[0],self.rgb[0][0]+gap),min(color[1],self.rgb[0][1]+gap) ,min(color[2],self.rgb[0][2]+gap)  ) )
 				self.rgb.write()
-				await core.asyncio.sleep_ms(speed)
+				await core.wait(speed)
 			while (0,0,0) != self.rgb[0]:
 				self.rgb.fill( ( max(0,self.rgb[0][0]-gap),max(0,self.rgb[0][1]-gap) ,max(0,self.rgb[0][2]-gap)  ) )
 				self.rgb.write()
-				await core.asyncio.sleep_ms(speed)
+				await core.wait(speed)
 		await core.call_once('indicator',temp)
 	async def rainbow ( self , speed = 10):
 		@core.asyn.cancellable
@@ -127,7 +135,7 @@ class Indicator :
 			for i in range(12) :
 				target_color[i] = core.random.choice(option)
 			while True :
-				await core.asyncio.sleep_ms(speed)
+				await core.wait(speed)
 				for i in range(12):
 					if self.rgb[i] == target_color[i]:
 						target_color[i] = core.random.choice(option)
@@ -148,7 +156,7 @@ class Indicator :
 			async def temp ():
 				while True :
 					for x in range(12):
-						await core.asyncio.sleep_ms( abs(6-x)*5 )
+						await core.wait( abs(6-x)*5 )
 						self.rgb.fill((0,0,0))
 						self.rgb[x] = (25,0,25)
 						self.rgb[x-1 if x-1 >=0 else 11-x] = (10,0,10)
@@ -160,7 +168,7 @@ class Indicator :
 			async def temp ():
 				while True :
 					for x in range(12):
-						await core.asyncio.sleep_ms( abs(6-x)*5 )
+						await core.wait( abs(6-x)*5 )
 						self.rgb.fill((0,0,0))
 						self.rgb[x] = (50,25,0)
 						self.rgb[x-1 if x-1 >=0 else 11-x] = (20,10,0)
@@ -171,11 +179,11 @@ class Indicator :
 			@core.asyn.cancellable
 			async def temp ():
 				for x in range(12):
-					await core.asyncio.sleep_ms(30)
+					await core.wait(30)
 					self.rgb.fill((0,x*5,0))
 					self.rgb.write()
 				for x in range(12,-1,-1):
-					await core.asyncio.sleep_ms(30)
+					await core.wait(30)
 					self.rgb.fill((0,x*5,0))
 					self.rgb.write()
 			await core.call_once('indicator',temp)
@@ -184,7 +192,7 @@ class Indicator :
 			async def temp ():
 				while True :
 					for x in range(12):
-						await core.asyncio.sleep_ms( abs(6-x)*5 )
+						await core.wait( abs(6-x)*5 )
 						self.rgb.fill((0,0,0))
 						self.rgb[x] = (50,25,0)
 						self.rgb[x-1 if x-1 >=0 else 11-x] = (0,20,10)
@@ -198,11 +206,11 @@ class Indicator :
 				for x in range(5):
 					self.rgb.fill((0,x*8,0))
 					self.rgb.write()
-					await asyncio.sleep_ms(10)
+					await wait(10)
 				for x in range(5,-1,-1):
 					self.rgb.fill((0,x*8,0))
 					self.rgb.write()
-					await asyncio.sleep_ms(10)
+					await wait(10)
 			await core.call_once('indicator',temp)
 		if state == None :
 			await core.call_once('indicator',None)

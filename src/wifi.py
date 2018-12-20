@@ -2,11 +2,7 @@
 import sys
 
 core = sys.modules['Blocky.Core']
-wifi_list = None
-connected = False
-
 wlan_sta  = core.network.WLAN(core.network.STA_IF)
-
 
 async def connect(ap=None):
 	print('[WIFI] -> Connecting')
@@ -14,12 +10,10 @@ async def connect(ap=None):
 	wlan_sta.active(True)
 	if ap == None :
 		while not wlan_sta.isconnected() :
-			await core.asyncio.sleep_ms(100)
+			await core.wait(100)
 			
 	else :
-		#core.mainthread.call_soon(core.indicator.heartbeat( (0,50,50) , 1 , wlan_sta.isconnected ))
 		while not wlan_sta.isconnected():
-			
 			l = []
 			core.wifi_list = wlan_sta.scan()
 			for x in core.wifi_list:
@@ -33,21 +27,22 @@ async def connect(ap=None):
 					if wlan_sta.isconnected():
 						break
 					print('.',end='')
-					await core.asyncio.sleep_ms(250)
+					await core.wait(250)
 				if wlan_sta.isconnected():
 					print('Connected to ' ,  preference)
 					break
 			if wlan_sta.isconnected():
 				core.flag.wifi = True
 				print('Syncing NTP Time -> ', end = '')
-				while True :
+				count   = 0
+				for _ in range(5):
 					try :
 						core.Timer.sync_ntp()
 						print('OK')
 						break
-					except :
-						await core.asyncio.sleep_ms(500)
-						print('.',end = '')
+					except Exception as err:
+						print('[NTP] -> {}'.format(err))
+						await core.wait(10000)
 				break
-			await core.asyncio.sleep_ms(10000)
+			await core.wait(10000)
 			print('[WIFI] -> Reconneting')

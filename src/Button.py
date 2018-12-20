@@ -42,7 +42,7 @@ class Button:
 	@core.asyn.cancellable		
 	async def _async_handler (self):
 		while True :
-			await core.asyncio.sleep_ms(500)
+			await core.wait(500)
 			if self.button.value() == 0:
 				if len(self.his) and (core.Timer.runtime() - self.his[-1]) > 500 :
 					print('pressed ' , len(self.his)//2)

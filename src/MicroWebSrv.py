@@ -127,6 +127,7 @@ class MicroWebSrv :
 						print('client->',err)
 						core.sys.print_exception(err)
 				if self.success == True :
+					print('setup success , resetting')
 					break
 			self._started = False
 			print('CLOSE AP')

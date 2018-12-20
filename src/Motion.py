@@ -33,10 +33,11 @@ class Motion :
 							await core.call_once('user_motion_{}'.format(0) , self.whennotdetect)
 				self.prev = not self.prev
 				
-			await core.asyncio.sleep_ms(300)  #Update rate
+			await core.wait(300)  #Update rate
 						
 	def event(self,type,function):
-		if type == 'detect' :
-			self.whendetect = function
-		else :
-			self.whennotdetect = function
+		if callable(function):
+			if type == 'detect' :
+				self.whendetect = function
+			else :
+				self.whennotdetect = function

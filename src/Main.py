@@ -1,17 +1,20 @@
 #version=2.0
 import Blocky.Core as core
-from BLocky.Indicator import indicator
+from Blocky.Indicator import indicator
 core.indicator = indicator
 core.mainthread = core.asyncio.get_event_loop()
 core.gc.threshold(90000)
 if 'user_code.py' not in core.os.listdir():
 	f = open('user_code.py','w')
 	f.close()
+if 'temp_code.py' not in core.os.listdir():
+	f = open('temp_code.py','w')
+	f.close()
 if 'config.json' not in core.os.listdir():
 	f = open('config.json','w')
 	f.close()
 try :
-	wdt_timer = core.machine.Timer(1)
+	core.wdt_timer = core.machine.Timer(1)
 except :
 	pass	
 
@@ -24,11 +27,11 @@ def _failsafe(source):
 			import os , machine,time
 			print('[failsafe] -> removing user code')
 			try :
-				os.rename('user_code.py','temp_code.py')
+				core.os.rename('user_code.py','temp_code.py')
 			except :
 				pass
 			f = open('last_word.py','w')
-			f.write('[warning] -> your code has been deleted because it stucks somewhere')
+			f.write('[DOT_ERROR] BLOCKING')
 			f.close()
 			for x in range(20):
 				core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write();time.sleep_ms(50)
@@ -49,7 +52,7 @@ async def run_user_code(direct = False):
 	else :
 		await core.indicator.show(None)
 	try :
-		wdt_timer.deinit()
+		core.wdt_timer.deinit()
 	except :
 		pass
 	
@@ -61,10 +64,12 @@ async def run_user_code(direct = False):
 	if direct == True :
 		print('[user-code] -> run directly')
 		try :
-			wdt_timer.init(mode=core.machine.Timer.PERIODIC,period=20000,callback = _failsafe)
+			core.wdt_timer.init(mode=core.machine.Timer.PERIODIC,period=20000,callback = _failsafe)
 		except :
 			pass
 		core.user_code = __import__('user_code')
+		core.gc.collect()
+		core.blynk.log('[HEAP] {}'.format(core.gc.mem_free())  )
 		return 
 		
 	list_library = core.get_list_library('user_code.py')
@@ -83,7 +88,7 @@ async def run_user_code(direct = False):
 		core.machine.reset()
 		
 	try :
-		wdt_timer.init(mode=core.machine.Timer.PERIODIC,period=20000,callback = _failsafe)
+		core.wdt_timer.init(mode=core.machine.Timer.PERIODIC,period=20000,callback = _failsafe)
 	except :
 		pass
 	try :
@@ -94,25 +99,27 @@ async def run_user_code(direct = False):
 	print('[user_code] -> started with {} heap'.format(core.gc.mem_free()))
 	try :
 		core.user_code = __import__('user_code')
+		core.gc.collect()
+		core.blynk.log('[HEAP] {}'.format(core.gc.mem_free()) )
 	except RuntimeError:
 		del core.sys.modules['user_code']
 		while not core.wifi.wlan_sta.isconnected() or core.flag.blynk == False:
 			await core.asyncio.sleep_ms(500)
 		core.mainthread.create_task(run_user_code(True))
 		return
-	except MemoryError:
+	except MemoryError as err:
 		del core.sys.modules['user_code']
 		print('[memory] -> removing user code')
 		try :
-			os.rename('user_code.py','temp_code.py')
+			core.os.rename('user_code.py','temp_code.py')
 		except :
 			pass
 		f = open('last_word.py','w')
-		f.write('[warning] -> your code has been deleted because it use so much memory')
+		f.write('[DOT_ERROR] MEMORY {}'.format(err))
 		f.close()
 		for x in range(20):
-			core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write();sleep_ms(50)
-			core.indicator.rgb.fill((0,0,0));core.indicator.rgb.write();sleep_ms(50)
+			core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write();core.time.sleep_ms(50)
+			core.indicator.rgb.fill((0,0,0));core.indicator.rgb.write();core.time.sleep_ms(50)
 		core.machine.reset()
 	
 async def send_last_word():
@@ -120,9 +127,13 @@ async def send_last_word():
 		while not core.flag.wifi:
 			await core.asyncio.sleep_ms(500)
 		try :
-			print('[lastword] -> {}'.format(open('last_word.py').read()))
+			print('[lastword] -> {}'.format(open('last_word.py').read()),end = '')
+			while core.blynk.state != 3:
+				await core.wait(200)
 			core.blynk.log(open('last_word.py').read())
-		except :
+			print('->last_word sent')
+		except Exception as err:
+			print(err)
 			pass
 		core.os.remove('last_word.py')
 
@@ -133,20 +144,20 @@ async def main(online=False):
 		while not core.cfn_btn.value():
 			core.time.sleep_ms(500)
 			temp = ( core.time.ticks_ms() - time ) //1000
-			if temp > 0 and temp < 5 :
+			if temp > 0 and temp < 3 :
 				core.indicator.rgb.fill((0,25,0));core.indicator.rgb.write()
-			if temp > 5 and temp < 10 :
-				core.indicator.rgb.fill((25,0,0));core.indicator.rgb.write()
-			if temp > 10:
+			if temp > 3 and temp < 6 :
+				core.indicator.rgb.fill((25,25,0));core.indicator.rgb.write()
+			if temp > 6:
 				core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write()
 		time = core.time.ticks_ms() - time ; time = time//1000
-		if time > 0 and time < 5 :
+		if time > 0 and time < 3 :
 			from Blocky.BootMode import BootMode
 			bootmode = BootMode()
 			await bootmode.Start()
-		if time > 5 and time < 10 :
+		if time > 3 and time < 6 :
 			core.os.remove('user_code.py')
-		if time > 10 and time < 15 :
+		if time > 6 :
 			core.os.remove('user_code.py')
 			core.os.remove('config.json')
 			try :
@@ -183,7 +194,7 @@ async def main(online=False):
 		
 	print('[wifi] -> connecting')
 	core.wifi = __import__('Blocky/wifi')
-	from BLocky.BlynkLib import Blynk
+	from Blocky.BlynkLib import Blynk
 	core.blynk = Blynk(core.config['token'],ota = run_user_code)
 	core.mainthread.create_task(send_last_word())
 	core.mainthread.create_task(run_user_code())
@@ -205,6 +216,7 @@ async def main(online=False):
 			while not core.flag.blynk:
 				await core.asyncio.sleep_ms(500)
 			print('You are back online :) Happy Blynking')
+			core.blynk.log('[DOT_ONLINE]\t{}\t{}\t{}'.format(core.Timer.current('clock'),core.wifi_list,core.wifi.wlan_sta.config('essid')))
 		if core.flag.blynk == False :
 			print('[blynk] -> connecting back now')
 			core.mainthread.create_task(core.blynk.run())
@@ -216,9 +228,16 @@ def wrapper():
 	while True :
 		try :
 			core.mainthread.run_forever()
+		except MemoryError as err:
+			f = open('last_word.py','w')
+			f.write('[DOT_ERROR] {}'.format(str(err)))
+			f.close()
+			core.os.rename('user_code.py', 'temp_code.py')
+			core.machine.reset()
 		except Exception as err :
 			core.sys.print_exception(err)
 			core.time.sleep_ms(1000)
+			core.blynk.log('[DOT_ERROR] {}'.format(str(err)))
 
 core.blynk = None
 core.mainthread.create_task(main())

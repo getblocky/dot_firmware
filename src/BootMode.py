@@ -51,33 +51,32 @@ class BootMode :
 		
 		
 	def _httpHandlerCheckStatus(self, httpClient, httpResponse):
-		httpResponse.WriteResponseOk(headers = None,contentType= "text/html",	contentCharset = "UTF-8",content = 'OK')
 		print('checking')
 		if self.wlan_sta.isconnected():
 			self.wifi_status = 1
-			print('Connected to ' , request_json['ssid'])
+			print('Connected to ' , self.request_json['ssid'])
 			config = {}
 			try :
 				config = core.json.loads(open('config.json').read())
 			except :
 				pass
 			if not config.get('known_networks'):
-				config['known_networks'] = [{'ssid': request_json['ssid'], 'password': request_json['password']}]
+				config['known_networks'] = [{'ssid': self.request_json['ssid'], 'password': self.request_json['password']}]
 			else:
 				exist_ssid = None
 				for n in config['known_networks']:
-					if n['ssid'] == request_json['ssid']:
+					if n['ssid'] == self.request_json['ssid']:
 						exist_ssid = n
 						break
 				if exist_ssid:
-					exist_ssid['password'] = request_json['password'] # update WIFI password
+					exist_ssid['password'] = self.request_json['password'] # update WIFI password
 					print('Update wifi password')
 				else:
 					# add new WIFI network
-					config['known_networks'].append({'ssid': request_json['ssid'], 'password': request_json['password']})
+					config['known_networks'].append({'ssid': self.request_json['ssid'], 'password': self.request_json['password']})
 					print('Add new network')
-			if len(request_json['token']):
-				config['token'] = request_json['token']
+			if len(self.request_json['token']):
+				config['token'] = self.request_json['token']
 			
 			f = open('config.json', 'w')
 			f.write(core.json.dumps(config))
@@ -89,9 +88,8 @@ class BootMode :
 				contentType	 = "text/html",
 				contentCharset = "UTF-8",
 				content = 'OK')
-			if content == 'OK':
-				print('completed')
-				self.server.setup_success()
+			print('completed')
+			self.server.setup_success()
 		else :
 			core.flag.wifi = False
 			print('.' , end = '')
@@ -109,20 +107,19 @@ class BootMode :
 		"""
 
 	def _httpHandlerSaveConfig(self, httpClient, httpResponse):
-		request_json  = ''
-		request_json = core.json.loads(httpClient.ReadRequestContent().decode('ascii'))
+		self.request_json  = ''
+		self.request_json = core.json.loads(httpClient.ReadRequestContent().decode('ascii'))
 		self.wifi_status = 0
 		httpResponse.WriteResponseOk(headers = None,contentType= "text/html",	contentCharset = "UTF-8",content = 'OK')
-		self.wlan_sta.connect(request_json['ssid'], request_json['password'])
+		self.wlan_sta.connect(self.request_json['ssid'], self.request_json['password'])
 		
 		#
 		while not self.wlan_sta.isconnected() :
 			core.time.sleep_ms(100)
 			print('.',end = '')
-		core.machine.reset()
 		#
 		
-		print('client->saveconfig: Trying to connect to ' + str(request_json) , end = '')
+		print('client->saveconfig: Trying to connect to ' + str(self.request_json) , end = '')
 		# we cant wait until the network to be connect here !
 	def is_ascii(self, s):
 		return all(ord(c) < 128 for c in s)
@@ -152,7 +149,8 @@ class BootMode :
 		if core.gc.mem_free() < 20000 :
 			core.machine.reset()
 		
-		id = core.binascii.hexlify(core.machine.unique_id()).decode('ascii')
+		import hashlib #avoid concurrent unique_id 
+		id = core.binascii.hexlify(hashlib.sha1(core.binascii.hexlify(core.machine.unique_id()).decode('ascii')).digest()[0:6]).decode('ascii')
 		uuid = [id[i:i+2] for i in range(0, len(id), 2)]
 
 		max_index = 0 ; max_value = 0
@@ -170,7 +168,7 @@ class BootMode :
 		if max_index == 2 : color = ['blue',	(0//n,0//n,255//n)]
 		if max_index == 3 : color = ['white',(50//n,50//n,50//n)]
 		if max_index == 4 : color = ['purple',(100//n,0//n,100//n)]
-		if max_index == 5 : color = ['yello', (100//n,100//n,0//n)]
+		if max_index == 5 : color = ['yellow', (100//n,100//n,0//n)]
 		
 		core.indicator.rgb.fill(color[1]);core.indicator.rgb.write()
 		core.mainthread.create_task(core.indicator.heartbeat( color[1] , 1 ,core.flag.wifi , 5) )

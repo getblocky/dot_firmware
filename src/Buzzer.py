@@ -5,13 +5,13 @@ core = sys.modules['Blocky.Core']
 
 class Buzzer:
 	def __init__(self,port):
-		p = core.getPort(port)
-		if p[0] == None : return 
+		self.p = core.getPort(port)
+		if self.p[0] == None : return 
 		self.mode = None
 		self.beeptime = 0
 		self.beepgap = 0
 		self.speed = 0
-		self.buzzer = core.machine.Pin(p[0],core.machine.Pin.OUT)
+		self.buzzer = core.machine.Pin(self.p[0],core.machine.Pin.OUT)
 		self.pwm  = None
 		self.timer = None
 		self.sequence = []
@@ -29,7 +29,7 @@ class Buzzer:
 	@core.asyn.cancellable
 	async def _handler (self):
 		while self.beeptime > 0:
-			await core.asyncio.sleep_ms(self.speed)
+			await core.wait(self.speed)
 			self.beeptime -= 1
 			self.buzzer.value(not self.buzzer.value())
 			

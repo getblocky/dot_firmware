@@ -54,6 +54,8 @@ def current(field=None):
 		return 
 	if field==None:
 		return core.time.localtime()
+	if field == "clock":
+		return '{}:{}:{}'.format(core.time.localtime()[3],core.time.localtime()[4],core.time.localtime()[5])
 	if field == "year":
 		return core.time.localtime()[0]
 	if field == "month":
@@ -82,19 +84,28 @@ def current(field=None):
 			return "Saturday"
 		if day == 6 :
 			return "Sunday"
+	if field.count('/') > 0:
+		field = field.replace('dd',str(core.time.localtime()[2]))
+		field = field.replace('mm',str(core.time.localtime()[1]))
+		field = field.replace('yyyy',str(core.time.localtime()[0]))
+		field = field.replace('clock','{}:{}:{}'.format(core.time.localtime()[3],core.time.localtime()[4],core.time.localtime()[5]))
+		return field
+		
+# Create an alarm at a specific time in a day , hh/mm only. , You can set the second by add another core.wait() command		
 async def alarm_service():
 	while not core.rtc :
-		await core.asyncio.sleep_ms(1000)
+		await core.wait(10000)
+		sync_ntp()
 	while True :
 		for x in core.alarm_list:
 			day , time , function  =  x 
 			if core.time.localtime()[6] == day and core.time.localtime()[3] == time[0] \
 				and core.time.localtime()[4] == time[1] :
-				print("[DINGDONG] {} {}".format(core.time.localtime() , x))
+				print("[ALARM] {} {}".format(core.time.localtime() , x))
 				core.mainthread.call_soon( core.asyn.Cancellable( function ) () )
 				
 		
-		await core.asyncio.sleep_ms( 60000 - core.time.localtime()[5]*1000)
+		await core.wait( 60000 - core.time.localtime()[5]*1000)
 			
 		
 def alarm ( day , time , function ):

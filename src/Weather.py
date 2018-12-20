@@ -47,7 +47,7 @@ class Weather:
 			temp = self.weather.temperature()
 			humd = self.weather.humidity()
 			
-			await asyncio.sleep_ms(2500)
+			await wait(2500)
 			try :
 				self.weather.measure()
 			except Exception:
