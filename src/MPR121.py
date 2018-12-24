@@ -1,4 +1,4 @@
-#version=1.0
+#version=2.0
 """
 MicroPython MPR121 capacitive touch keypad and breakout board driver
 https://github.com/mcauser/micropython-mpr121
@@ -33,6 +33,7 @@ def get_bit(byteval,idx):
 class MPR121:
 	def __init__(self, port, address=0x5A):
 		self.p = core.getPort( port )
+		self.port = port
 		self.i2c = core.machine.I2C ( scl = core.machine.Pin(self.p[0]) , sda = core.machine.Pin(self.p[1]) )
 		self.address = address
 		self.error = False
@@ -158,18 +159,18 @@ class MPR121:
 									if core.flag.duplicate == True :
 										core.mainthread.call_soon ( core.asyn.Cancellable( self.handler[x][0] )() )
 									else :
-										await core.call_once('user_mpr121_{}.{}'.format(x,1),self.handler[x][0])
+										await core.call_once('user_mpr121_{}_{}_{}'.format(self.port , x,1),self.handler[x][0])
 							else :
 								if self.handler[x][1] != None :
 									if core.flag.duplicate == True :
 										core.mainthread.call_soon ( core.asyn.Cancellable( self.handler[x][1] )() )
 									else :
-										await core.call_once('user_mpr121_{}.{}'.format(x,0),self.handler[x][1])
+										await core.call_once('user_mpr121_{}_{}_{}'.format(self.port , x,0),self.handler[x][1])
 										
 				self.prev = now
 			except Exception as err	:
 				self.error = True
-			await core.asyncio.sleep_ms(100)
+			await core.wait(100)
 	
 
 

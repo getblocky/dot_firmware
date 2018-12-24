@@ -1,4 +1,4 @@
-#version=1.1
+#version=2.0
 
 import sys
 core = sys.modules['Blocky.Core']
@@ -6,6 +6,7 @@ core = sys.modules['Blocky.Core']
 class Sound :
 	def __init__ (self , port):
 		self.p = core.getPort(port)
+		self.port = port
 		if self.p[1] == None or self.p[2] == None :
 			return
 			
@@ -29,11 +30,11 @@ class Sound :
 	@core.asyn.cancellable
 	async def _async_handler(self):
 		while True :
-			await core.asyncio.sleep_ms(500)
+			await core.wait(500)
 			if core.Timer.runtime() - self.last > 500 and self.time > 0 :
 				try :
 					print('[sound] -> {}->{}'.format(self.time,self.func[str(self.time)]))
-					await core.call_once('user_sound_{}'.format(self.time),self.func[str(self.time)])
+					await core.call_once('user_sound_{}_{}'.format(self.port , self.time),self.func[str(self.time)])
 				except Exception as err:
 					print('[sound->exec] -> {}'.format(err))
 				finally :

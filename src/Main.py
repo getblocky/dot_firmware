@@ -37,6 +37,7 @@ def _failsafe(source):
 				core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write();time.sleep_ms(50)
 				core.indicator.rgb.fill((0,0,0));core.indicator.rgb.write();time.sleep_ms(50)
 			core.machine.reset()
+core._failsafe = _failsafe
 
 async def run_user_code(direct = False):
 	"""
@@ -51,10 +52,7 @@ async def run_user_code(direct = False):
 		return
 	else :
 		await core.indicator.show(None)
-	try :
-		core.wdt_timer.deinit()
-	except :
-		pass
+	core._failsafeActive(False)
 	
 	""" 
 		By defaults , the system will run user code and connecting at the same time
@@ -63,10 +61,7 @@ async def run_user_code(direct = False):
 	"""
 	if direct == True :
 		print('[user-code] -> run directly')
-		try :
-			core.wdt_timer.init(mode=core.machine.Timer.PERIODIC,period=20000,callback = _failsafe)
-		except :
-			pass
+		core._failsafeActive(True)
 		core.user_code = __import__('user_code')
 		core.gc.collect()
 		core.blynk.log('[HEAP] {}'.format(core.gc.mem_free())  )
@@ -86,11 +81,7 @@ async def run_user_code(direct = False):
 	if len(list_library_update):
 		core.eeprom.set('LIB',list_library_update)
 		core.machine.reset()
-		
-	try :
-		core.wdt_timer.init(mode=core.machine.Timer.PERIODIC,period=20000,callback = _failsafe)
-	except :
-		pass
+	core._failsafeActive(True)
 	try :
 		del core.sys.modules['user_code']
 	except :

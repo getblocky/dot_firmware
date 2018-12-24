@@ -1,10 +1,11 @@
-#version=1.0
+#version=2.0
 import sys
 core = sys.modules['Blocky.Core']
 
 class Motion :
 	def __init__(self , port):
 		self.p = core.getPort(port)[0]
+		self.port = port
 		if self.p == None :
 			return 
 		self.motion = core.machine.Pin(self.p,core.machine.Pin.IN,core.machine.Pin.PULL_DOWN)
@@ -24,13 +25,13 @@ class Motion :
 						if core.flag.duplicate==True :
 							core.mainthread.create_task(core.asyn.Cancellable(self.whendetect)())
 						else :
-							await core.call_once('user_motion_{}'.format(1) , self.whendetect)
+							await core.call_once('user_motion_{}_{}'.format(self.port , 1) , self.whendetect)
 				else:
 					if self.whennotdetect :
 						if core.flag.duplicate==True :
 							core.mainthread.create_task(core.asyn.Cancellable(self.whennotdetect)())
 						else :
-							await core.call_once('user_motion_{}'.format(0) , self.whennotdetect)
+							await core.call_once('user_motion_{}_{}'.format(self.port , 0) , self.whennotdetect)
 				self.prev = not self.prev
 				
 			await core.wait(300)  #Update rate

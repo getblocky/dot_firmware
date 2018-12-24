@@ -112,22 +112,18 @@ class Blynk:
 			# Handle Virtual Write operation
 			elif cmd == 'vw': 
 				pin = int(params.pop(0))
-				if pin == 123 :
-					self.repl.feed(params[0])
-					core.os.dupterm_notify(None)
-					
 				if pin == 127 :
 					try:
 						out = eval(params[0])
 						if out != None:
-							self.log(repr(out))
+							self.log('[REPR] {}'.format(repr(out)))
 					except:
 						try:
 							exec(params[0])
 						except Exception as e:
-							self.log('Exception:\n  ' + repr(e))
+							self.log('[EXCEPTION] {}'.format(repr(e)))
 					
-				if pin == 126 :
+				elif pin == 126 :
 					print('['+str(core.Timer.runtime())+'] OTA Message Received')
 					core.gc.collect()
 					ota_lock = core.eeprom.get('OTA_LOCK')
@@ -187,23 +183,7 @@ class Blynk:
 					else :
 						self.log("[DOT_ERROR] OTA_LOCKED")
 					# Run cleanup task here
-				elif pin == 127 :
-					response = ''
-					try :
-						r = ''
-						exec('r=repr({})'.format(params[0]))
-						self.log(r)
-						print(1,r)
-					except TypeError:
-						try :
-							exec(params[0],globals())
-						except Exception as err:
-							self.log(err)
-							print(2,err)
-							pass
-					except Exception as err:
-						self.log(err)
-						print(3,err)
+				
 						
 				elif (pin in self._vr_pins_write or pin in self._vr_pins_read) :
 					self.message = params

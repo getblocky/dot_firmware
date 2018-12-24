@@ -85,11 +85,14 @@ async def cleanup():
 		
 async def call_once(name,function):
 	print('[CALLING] {} -> {}'.format(name,function))
-	if name in asyn.NamedTask.instances:
-		if asyn.NamedTask.is_running(name):
-			await asyn.NamedTask.cancel ( name )
-			while asyn.NamedTask.is_running (name):
-				await asyncio.sleep_ms(10)
+	try :
+		if name in asyn.NamedTask.instances:
+			if asyn.NamedTask.is_running(name):
+				await asyn.NamedTask.cancel ( name )
+				while asyn.NamedTask.is_running (name):
+					await asyncio.sleep_ms(10)
+	except :
+		pass
 	#mainthread.call_soon(asyn.NamedTask(name,function))
 	if function != None :
 		print('[CALLING] {} -> {}  DONE '.format(name,function))
@@ -186,4 +189,15 @@ async def wait ( time ):
 		await asyncio.sleep_ms(500)
 	await asyncio.sleep_ms(time % 500)
 		
-	
+_failsafe = None
+def _failsafeActive(state):
+	if state == True :
+		try :
+			core.wdt_timer.init(mode=core.machine.Timer.PERIODIC,period=20000,callback = _failsafe)
+		except :
+			pass
+	if state == False :
+		try :
+			core.wdt_timer.deinit()
+		except :
+			pass
