@@ -1,5 +1,6 @@
 #version=1.0
 # All public variable across the system to avoid duplicate import
+prescript  = "import sys\ncore=sys.modules['Blocky.Core']\n"
 rtc = False
 asyncio = None 
 asyn = None 
@@ -14,36 +15,20 @@ alarm_list = []
 user_namedtask = []
 wdt_timer = None
 wifi_list  = {}
-import time
-import machine
-import neopixel
-import binascii
-import json
-import ure
-import gc
-import hashlib
-import network
-import sys
-import micropython
-import socket
-import struct
-import _thread
-import urequests
-import random
-import os
+ext_socket = None
+user_code = None 
+import time,machine,neopixel,binascii,json,ure,gc,hashlib,network,sys
+import micropython,socket,struct,_thread,urequests,random,os
 import Blocky.Global as flag
-import Blocky.EEPROM
-import Blocky.uasyncio as asyncio
 import Blocky.asyn as asyn
 import Blocky.Timer as Timer
 from Blocky.Indicator import indicator
 from Blocky.Pin import getPort
-
+import Blocky.EEPROM
 eeprom = Blocky.EEPROM.EEPROM('eeprom')
-
 cfn_btn = machine.Pin(12 , machine.Pin.IN , machine.Pin.PULL_UP)
+import Blocky.uasyncio as asyncio
 mainthread = asyncio.get_event_loop()
-
 wifi = None # Wifi class started in Main
 TimerInfo = [time.ticks_ms() , time.ticks_ms() , None , None]
 
@@ -101,7 +86,7 @@ async def call_once(name,function):
 		await asyncio.sleep_ms(0)
 	else :
 		print('[CANCEL] {}'.format(name))
-	
+
 def download(filename , path):
 	response = None
 	gc.collect()
@@ -152,7 +137,6 @@ def get_list_library(file):
 	for line in cell :
 		library = ''
 		version = 0.0
-		#from Blocky.STH import * #version=1.0
 		if line.startswith('from '):
 			library = line.split('.')[1].split(' ')[0]
 			if '#version' in line :

@@ -20,10 +20,14 @@ except :
 
 def _failsafe(source):
 	if core.Timer.runtime() - core.blynk.last_call > 20000 :
-		if not core.wifi.wlan_sta.isconnected():
-			print('[failsafe] -> wifi is so bad')
+		if core.eeprom.get('EXT_SOCKET') == True :
 			return
 		else :
+			if not core.wifi.wlan_sta.isconnected():
+				print('[failsafe] -> wifi is so bad')
+				return
+				
+		if not core.flag.direct_command:
 			import os , machine,time
 			print('[failsafe] -> removing user code')
 			try :
@@ -36,7 +40,10 @@ def _failsafe(source):
 			for x in range(20):
 				core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write();time.sleep_ms(50)
 				core.indicator.rgb.fill((0,0,0));core.indicator.rgb.write();time.sleep_ms(50)
-			core.machine.reset()
+		f = open('last_word.py','w')
+		f.write('[DOT_ERROR] BLOCKING_CMD')
+		f.close()
+		core.machine.reset()
 core._failsafe = _failsafe
 
 async def run_user_code(direct = False):
@@ -47,7 +54,7 @@ async def run_user_code(direct = False):
 		return 
 	if core.os.stat('user_code.py')[6] == 0 :
 		while not core.flag.blynk :
-			await core.asyncio.sleep_ms(500)
+			await core.wait(500)
 		await core.indicator.rainbow()
 		return
 	else :
@@ -64,7 +71,7 @@ async def run_user_code(direct = False):
 		core._failsafeActive(True)
 		core.user_code = __import__('user_code')
 		core.gc.collect()
-		core.blynk.log('[HEAP] {}'.format(core.gc.mem_free())  )
+		await core.blynk.log('[HEAP] {}'.format(core.gc.mem_free())  )
 		return 
 		
 	list_library = core.get_list_library('user_code.py')
@@ -91,7 +98,7 @@ async def run_user_code(direct = False):
 	try :
 		core.user_code = __import__('user_code')
 		core.gc.collect()
-		core.blynk.log('[HEAP] {}'.format(core.gc.mem_free()) )
+		await core.blynk.log('[HEAP] {}'.format(core.gc.mem_free()) )
 	except RuntimeError:
 		del core.sys.modules['user_code']
 		while not core.wifi.wlan_sta.isconnected() or core.flag.blynk == False:
@@ -99,34 +106,37 @@ async def run_user_code(direct = False):
 		core.mainthread.create_task(run_user_code(True))
 		return
 	except MemoryError as err:
-		del core.sys.modules['user_code']
-		print('[memory] -> removing user code')
-		try :
-			core.os.rename('user_code.py','temp_code.py')
-		except :
-			pass
-		f = open('last_word.py','w')
-		f.write('[DOT_ERROR] MEMORY {}'.format(err))
-		f.close()
-		for x in range(20):
-			core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write();core.time.sleep_ms(50)
-			core.indicator.rgb.fill((0,0,0));core.indicator.rgb.write();core.time.sleep_ms(50)
+		if not core.flag.direct_command:
+			del core.sys.modules['user_code']
+			print('[memory] -> removing user code')
+			try :
+				core.os.rename('user_code.py','temp_code.py')
+			except :
+				pass
+			f = open('last_word.py','w')
+			f.write('[DOT_ERROR] MEMORY {}'.format(err))
+			f.close()
+			for x in range(20):
+				core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write();core.time.sleep_ms(50)
+				core.indicator.rgb.fill((0,0,0));core.indicator.rgb.write();core.time.sleep_ms(50)
 		core.machine.reset()
 	
 async def send_last_word():
+
+
+
+
+
 	if "last_word.py" in core.os.listdir():
-		while not core.flag.wifi:
-			await core.asyncio.sleep_ms(500)
+		while core.blynk.state != 3 :
+			await core.wait(200)
 		try :
 			print('[lastword] -> {}'.format(open('last_word.py').read()),end = '')
-			while core.blynk.state != 3:
-				await core.wait(200)
-			core.blynk.log(open('last_word.py').read())
-			print('->last_word sent')
-		except Exception as err:
-			print(err)
+			await core.blynk.log(open('last_word.py').read())
+		except :
 			pass
-		core.os.remove('last_word.py')
+		finally :
+			core.os.remove('last_word.py')
 
 async def main(online=False):
 	if not core.cfn_btn.value():
@@ -173,16 +183,24 @@ async def main(online=False):
 		await bootmode.Start()
 		core.machine.reset()
 		
-	# Offline operation , press config to be back online
-	if core.eeprom.get('OFFLINE') == True and core.eeprom.get('OTA_LOCK') == True :
+	# when in Offline mode , press config to be back online
+	if core.eeprom.get('OFFLINE') == True  :
 		def back_online(s):
 			core.mainthread.call_soon(main(True))
 			core.cfn_btn.irq(trigger=0)
 		core.cfn_btn.irq(trigger = core.machine.Pin.IRQ_FALLING , handler = back_online)
 		print('running offline mode ! press config to be back online')
+		if core.eeprom.get('EXT_SOCKET') == True :
+			print('[OFFLINE MODE] -> running blynk , timer and other service')
+			core.blynk = Blynk(core.config['token'],ota = run_user_code)
+			core.mainthread.create_task(send_last_word())
+			core.mainthread.create_task(core.Timer.alarm_service())
+		print('[OFFLINE MODE] -> initialize user_code')
 		core.user_code = __import__('user_code')
-		return
 		
+		return
+	
+	
 	print('[wifi] -> connecting')
 	core.wifi = __import__('Blocky/wifi')
 	from Blocky.BlynkLib import Blynk
@@ -220,15 +238,16 @@ def wrapper():
 		try :
 			core.mainthread.run_forever()
 		except MemoryError as err:
-			f = open('last_word.py','w')
-			f.write('[DOT_ERROR] {}'.format(str(err)))
-			f.close()
-			core.os.rename('user_code.py', 'temp_code.py')
+			if not core.flag.direct_command:
+				f = open('last_word.py','w')
+				f.write('[DOT_ERROR] {}'.format(str(err)))
+				f.close()
+				core.os.rename('user_code.py', 'temp_code.py')
 			core.machine.reset()
 		except Exception as err :
 			core.sys.print_exception(err)
 			core.time.sleep_ms(1000)
-			core.blynk.log('[DOT_ERROR] {}'.format(str(err)))
+			core.mainthread.call_soon(core.blynk.log('[DOT_ERROR] {}'.format(str(err))))
 
 core.blynk = None
 core.mainthread.create_task(main())

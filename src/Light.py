@@ -1,6 +1,7 @@
-#version=1.0
+#version=2.0
 import sys
 core = sys.modules['Blocky.Core']
+
 class Light :
 	def __init__ (self , port , range = 3.3):
 		self.pin = core.getPort(port)

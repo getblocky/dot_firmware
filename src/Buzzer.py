@@ -1,107 +1,62 @@
-#version=1.0
+#version=2.0
 
-import sys
-core = sys.modules['Blocky.Core']
+import sys;core=sys.modules['Blocky.Core']
 
 class Buzzer:
 	def __init__(self,port):
+		self.port = port
 		self.p = core.getPort(port)
-		if self.p[0] == None : return 
-		self.mode = None
-		self.beeptime = 0
-		self.beepgap = 0
-		self.speed = 0
-		self.buzzer = core.machine.Pin(self.p[0],core.machine.Pin.OUT)
-		self.pwm  = None
-		self.timer = None
-		self.sequence = []
-		self.pos = 0
-		self.playing = False
-	def _handler(self):
-		self.beeptime -= 1
-		if self.beeptime % 2 == 0:
-			self.buzzer.value(0)
-		else :
-			self.buzzer.value(1)
-		if self.beeptime == 0:
-			return 
-		#AddTask(mode='once',function=self._handler,time=self.speed)
-	@core.asyn.cancellable
-	async def _handler (self):
-		while self.beeptime > 0:
-			await core.wait(self.speed)
-			self.beeptime -= 1
-			self.buzzer.value(not self.buzzer.value())
-			
-	def beep(self,time=1,speed=200):
-		self.beeptime = time*2
-		self.speed = speed
-		#self._handler()
-		core.mainthread.create_task(core.asyn.Cancellable(self._handler)())
-		
-	def turn (self , value):
-		if isinstance(value,int):
-			self.buzzer.value( value )
-		else :
-			if value == 'on':
-				self.buzzer.value(1)
-			elif value == 'off':
-				self.buzzer.value(0)
-			elif value == 'flip':
-				self.buzzer.value(not self.buzzer.value())
+		self.pwm = core.machine.PWM(core.machine.Pin(self.p[0]),duty = 0,freq=38000)
 	
-	
-	
-	def play(self,sequence):
-		if self.playing == True :
-			return 
-		try :
-			self.time.deinit()
+	def turn(self,value):
+		try:
+			if isinstance(value,int):
+				if value == 1:
+					self.pwm.freq(38000)
+					self.pwm.duty(1023)
+				if value == 0:
+					self.pwm.duty(0)
+			elif isinstance(value,str):
+				if value == 'on':
+					self.pwm.freq(38000)
+					self.pwm.duty(1023)
+				if value == 'off':
+					self.pwm.duty(0)
+				if value == 'flip':
+					if self.pwm.duty() == 0:
+						self.turn(1)
+					else :
+						self.turn(0)
 		except :
 			pass
-		#core.deinit_list.append(self.timer)
-		
-		self.pwm = core.machine.PWM(self.buzzer , duty = 0)
-		
-		if not isinstance(sequence,list):
-			return 
-			
-		self.sequence = sequence
-		self.playing = True
-		self.pos = 0
+	
+	async def beep(self,time=1,speed=200):
+		self.turn(0)
+		for x in range(0,time*2):
+			self.turn('flip')
+			await core.wait(speed)
+		self.turn(0)
+
+	async def play(self,sequence,gap=10,duty=None):
 		try :
-			self.timer.deinit()
+			if isinstance(sequence,int):
+				self.pwm.freq(sequence)
+				self.pwm.duty(duty or 100)
+			if isinstance(sequence,list):
+				if len(sequence) % 2 == 0:
+					self.pwm.duty(duty or 100)
+					for x in range(0,len(sequence),2):
+						if sequence[x] != 0 :
+							self.pwm.freq(sequence[x])
+						else :
+							self.pwm.duty(0)
+							
+						await core.wait(sequence[x+1])
+						self.pwm.duty(0)
+						await core.wait(gap)
+						self.pwm.duty(duty or 100)
+					self.pwm.duty(0)
 		except :
 			pass
 			
-		try :
-			self.timer = None
-			self.timer = core.machine.Timer(-1)
-			self.timer.init(mode=core.machine.Timer.ONE_SHOT,period = 1,callback =self.isr_handler)
-		except :
-			pass
-	def isr_handler(self , source):
-		if self.sequence[self.pos][0] ==0:
-			self.pwm.duty(0)
-		else :
-			self.pwm.duty(512)
-			self.pwm.freq(self.sequence[self.pos][0])
-		self.pos += 1
-		if self.pos >= len(self.sequence):
-			self.timer.deinit()
-			self.pwm.deinit()
-			self.playing = False
-		else :
-			try :
-				self.timer.deinit()
-			except :
-				pass
-				
-			try :
-				self.timer = None
-				self.timer = core.machine.Timer(-1)
-				self.timer.init(mode=core.machine.Timer.ONE_SHOT,period=self.sequence[self.pos-1][1],callback=self.isr_handler)
-			except :
-				pass
 			
-		

@@ -37,7 +37,7 @@ async def connect(ap=None):
 				count   = 0
 				for _ in range(5):
 					try :
-						core.Timer.sync_ntp()
+						await core.Timer.sync_ntp()
 						print('OK')
 						break
 					except Exception as err:

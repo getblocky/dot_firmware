@@ -53,17 +53,7 @@ class Indicator :
 				for x in range(255,0,-1):
 					self.rgb.fill((x,x,x));self.rgb.write()
 					await core.wait(1)
-					
-		elif name == 'blynk-connecting':
-			@core.asyn.rgb.cancellable
-			async def handler (self):
-				while True :
-					for x in range(255):
-						self.rgb.fill((x,x,x));self.rgb.write()
-						await core.wait(1)
-					for x in range(255,0,-1):
-						self.rgb.fill((x,x,x));self.rgb.write()
-						await core.wait(1)
+		
 		elif name == 'blynk-authenticating':
 			pass
 		elif name == 'blynk-failed':
@@ -163,7 +153,7 @@ class Indicator :
 						self.rgb[x-2 if x-2 >=0 else 11-x] = (5,0,5)
 						self.rgb.write()
 			await core.call_once('indicator',temp)
-		if state == 'wifi-connecting':
+		elif state == 'wifi-connecting':
 			@core.asyn.cancellable
 			async def temp ():
 				while True :
@@ -175,7 +165,7 @@ class Indicator :
 						self.rgb[x-2 if x-2 >=0 else 11-x] = (5,5,0)
 						self.rgb.write()
 			await core.call_once('indicator',temp)
-		if state == 'blynk-authenticated':
+		elif state == 'blynk-authenticated':
 			@core.asyn.cancellable
 			async def temp ():
 				for x in range(12):
@@ -187,7 +177,7 @@ class Indicator :
 					self.rgb.fill((0,x*5,0))
 					self.rgb.write()
 			await core.call_once('indicator',temp)
-		if state == 'ota-starting':
+		elif state == 'ota-starting':
 			@core.asyn.cancellable
 			async def temp ():
 				while True :
@@ -200,7 +190,7 @@ class Indicator :
 						self.rgb[x-3 if x-3 >=0 else 11-x] = (0,5,5)
 						self.rgb.write()
 			await core.call_once('indicator',temp)
-		if state == 'ota-success':
+		elif state == 'ota-success':
 			@core.asyn.cancellable
 			async def temp ():
 				for x in range(5):
@@ -211,6 +201,17 @@ class Indicator :
 					self.rgb.fill((0,x*8,0))
 					self.rgb.write()
 					await wait(10)
+			await core.call_once('indicator',temp)
+		elif state == 'blynk-connecting':
+			@core.asyn.rgb.cancellable
+			async def temp (self):
+				while True :
+					for x in range(255):
+						self.rgb.fill((x,x,x));self.rgb.write()
+						await core.wait(1)
+					for x in range(255,0,-1):
+						self.rgb.fill((x,x,x));self.rgb.write()
+						await core.wait(1)
 			await core.call_once('indicator',temp)
 		if state == None :
 			await core.call_once('indicator',None)

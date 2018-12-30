@@ -22,16 +22,10 @@ class Motion :
 				print('[MOTION] {}'.format(self.motion.value()))
 				if self.motion.value():
 					if self.whendetect :
-						if core.flag.duplicate==True :
-							core.mainthread.create_task(core.asyn.Cancellable(self.whendetect)())
-						else :
-							await core.call_once('user_motion_{}_{}'.format(self.port , 1) , self.whendetect)
+						await core.call_once('user_motion_{}_{}'.format(self.port , 1) , self.whendetect)
 				else:
 					if self.whennotdetect :
-						if core.flag.duplicate==True :
-							core.mainthread.create_task(core.asyn.Cancellable(self.whennotdetect)())
-						else :
-							await core.call_once('user_motion_{}_{}'.format(self.port , 0) , self.whennotdetect)
+						await core.call_once('user_motion_{}_{}'.format(self.port , 0) , self.whennotdetect)
 				self.prev = not self.prev
 				
 			await core.wait(300)  #Update rate
