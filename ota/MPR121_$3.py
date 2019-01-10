@@ -1,6 +1,9 @@
-ption as err	:
+1])
+										
+				self.prev = now
+			except Exception as err	:
 				self.error = True
-			await core.asyncio.sleep_ms(100)
+			await core.wait(100)
 	
 
 

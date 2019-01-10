@@ -31,7 +31,7 @@ class Indicator :
 			if (b>f): b = max(b-self.gap,0)
 			self.rgb.fill(   (r,g,b) )
 			self.rgb.write()
-			await core.asyncio.sleep_ms(self.speed)
+			await core.wait(self.speed)
 			if callable(exit):
 				if exit() == True :
 					break
@@ -49,23 +49,23 @@ class Indicator :
 			async def handler (self):
 				for x in range(255):
 					self.rgb.fill((x,x,x));self.rgb.write()
-					await core.asyncio.sleep_ms(1)
+					await core.wait(1)
 				for x in range(255,0,-1):
 					self.rgb.fill((x,x,x));self.rgb.write()
-					await core.asyncio.sleep_ms(1)
-					
-		elif name == 'blynk-connecting':
-			@core.asyn.rgb.cancellable
-			async def handler (self):
-				while True :
-					for x in range(255):
-						self.rgb.fill((x,x,x));self.rgb.write()
-						await core.asyncio.sleep_ms(1)
-					for x in range(255,0,-1):
-						self.rgb.fill((x,x,x));self.rgb.write()
-						await core.asyncio.sleep_ms(1)
+					await core.wait(1)
+		
 		elif name == 'blynk-authenticating':
 			pass
 		elif name == 'blynk-failed':
 			pass
-		elif name == 'blynk
+		elif name == 'blynk-success':
+			pass
+		core.mainthread.create_task ( core.asyn.rgb.NamedTask('indicator-handler',self.handler) )
+	
+	async def loading(self,color,gap=10,cancel=None,reverse = False):
+		# Cancel Condition either a flag or a function
+		# if the confition function is reversed then set the reverse to True
+		@core.asyn.cancellable
+		async def temp ():
+			while True :
+				if (cal

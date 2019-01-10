@@ -1,4 +1,4 @@
-#version=1.0
+#version=2.0
 
 import sys 
 core = sys.modules['Blocky.Core']
@@ -7,6 +7,7 @@ core = sys.modules['Blocky.Core']
 class Button:
 	def __init__(self , port):
 		self.p = core.getPort(port)
+		self.port = port
 		if self.p[0] == None :
 			return 
 		self.last_time = core.Timer.runtime()
@@ -42,7 +43,7 @@ class Button:
 	@core.asyn.cancellable		
 	async def _async_handler (self):
 		while True :
-			await core.asyncio.sleep_ms(500)
+			await core.wait(500)
 			if self.button.value() == 0:
 				if len(self.his) and (core.Timer.runtime() - self.his[-1]) > 500 :
 					print('pressed ' , len(self.his)//2)
@@ -56,6 +57,6 @@ class Button:
 				raise Exception
 				
 			if core.flag.duplicate == False :
-				await core.call_once('user_button_{}{}'.format(type,time) , function)
+				await core.call_once('user_button_{}_{}_{}'.format(self.port,type,time) , function)
 			else:
-				core.mainthread.create_task(core.asyn.Cancellable(function)())
+				core.mainthread.create_task(core.asyn.Canc

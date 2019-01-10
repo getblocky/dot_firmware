@@ -1,7 +1,4 @@
-for c in s)
-	
-	def _httpHandlerScanNetworks(self, httpClient, httpResponse) :
-		print('scanap->' , end = '')
+ap->' , end = '')
 		self.wlan_sta.active(True)
 		
 		networks = []
@@ -25,7 +22,8 @@ for c in s)
 		if core.gc.mem_free() < 20000 :
 			core.machine.reset()
 		
-		id = core.binascii.hexlify(core.machine.unique_id()).decode('ascii')
+		import hashlib #avoid concurrent unique_id 
+		id = core.binascii.hexlify(hashlib.sha1(core.binascii.hexlify(core.machine.unique_id()).decode('ascii')).digest()[0:6]).decode('ascii')
 		uuid = [id[i:i+2] for i in range(0, len(id), 2)]
 
 		max_index = 0 ; max_value = 0
@@ -43,7 +41,7 @@ for c in s)
 		if max_index == 2 : color = ['blue',	(0//n,0//n,255//n)]
 		if max_index == 3 : color = ['white',(50//n,50//n,50//n)]
 		if max_index == 4 : color = ['purple',(100//n,0//n,100//n)]
-		if max_index == 5 : color = ['yello', (100//n,100//n,0//n)]
+		if max_index == 5 : color = ['yellow', (100//n,100//n,0//n)]
 		
 		core.indicator.rgb.fill(color[1]);core.indicator.rgb.write()
 		core.mainthread.create_task(core.indicator.heartbeat( color[1] , 1 ,core.flag.wifi , 5) )
@@ -56,4 +54,4 @@ for c in s)
 		wifi_status = 0
 		
 		
-		#----------------------------------
+		#-----------

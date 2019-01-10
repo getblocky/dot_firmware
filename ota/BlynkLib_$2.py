@@ -1,54 +1,61 @@
-						if total_part == curr_part :
-								core.ota_file.write(params[0])
-								core.ota_file.close()
-								core.ota_file = None
-								core.os.rename('temp_code.py','user_code.py')
-								print('^^~')
-								#self.virtual_write(127,'[OTA_DONE]',http = True)
-								self.log('[OTA_DONE]')
-								print('User code saved')
-								for x in range(7):
-									core.indicator.rgb.fill((0,x*10,0))
-									core.indicator.rgb.write()
-									await core.asyncio.sleep_ms(20)
-								for x in range(5,-1,-1):
-									core.indicator.rgb.fill((0,x*10,0))
-									core.indicator.rgb.write()
-									await core.asyncio.sleep_ms(20)
+							for x in range(50):
+									core.indicator.rgb.fill((0,x,0));core.indicator.rgb.write()
+									await core.wait(1)
+								for x in range(50,-1,-1):
+									core.indicator.rgb.fill((0,x,0));core.indicator.rgb.write()
+									await core.wait(1)											
 								core.mainthread.call_soon(self.ota())
-								
-							if curr_part < total_part:
+							if curre_part < total_part:
+								progress = int(curre_part)%13
+								total = int(total_part)%13
+								total = 12 if total_part - curre_part > 12 else total
+								for x in range(total):
+									core.indicator.rgb[x] = (25,0,0)
+								for x in range(progress):
+									core.indicator.rgb[x] = (0,25,0)
+								core.indicator.rgb.write()
 								core.ota_file.write(params[0])
-								print('[PROBE] ' , params[0][0:min(10,len(params[0]))])
-						
+								core.ota_file.flush()
+								await self.log('[OTA_ACK]'+str([sha1,params[1]]))
+								
 					else :
-						print('Sorry , your code is lock , press config to unlock it')
-						self.log("[ERROR] You have locked your code , to upload new code , you need to press CONFIG button onboard")
-					# Run cleanup task here
-					
-				elif (pin in self._vr_pins_write or pin in self._vr_pins_read) :
+						await self.log('[DOT_ERROR] OTA_LOCKED')
+				
+				# User defined channel
+				# Note that "vr" and "vw" is the same
+				elif (str(pin) in self._vr_pins):
 					self.message = params
 					for x in range(len(self.message)):
 						try :
 							self.message[x] = int(self.message[x])
 						except :
 							pass
-					if len(self.message) == 1 :
+					if len(self.message) == 1:
 						self.message = self.message[0]
-						
-					print("[Blynk] V{} | {} {}".format(pin,self.message,type(self.message) ) )
-					if core.flag.duplicate == False :
-						await core.call_once('user_blynk_{}'.format(pin) , self._vr_pins_write[pin])
-					else :
-						core.mainthread.call_soon(core.asyn.Cancellable(self._vr_pins_write[pin])())
-						
-					await core.asyncio.sleep_ms(50) #Asyncio will focus on the handling
-			# Handle Virtual Read operation
-			elif cmd == 'vr':
-				pin = int(params.pop(0))
-				if pin in self._vr_pins and self._vr_pins[pin].read:
-					self._vr_pins[pin].read()
-			else:
-				print('UNKNOWN' , params)
-				return 
-				#raise ValueError("Unknown messag
+					print('[BLYNK] V{} {} -> {}'.format(pin,type(self.message),self.message))
+					if callable(self._vr_pins[str(pin)]):
+						await core.call_once('user_blynk_{}_vw'.format(pin),self._vr_pins[str(pin)])
+				else :
+					print('unregistered channel {}'.format(pin))
+		except Exception as err:
+			import sys;sys.print_exception(err)
+			pass
+	
+	def _new_msg_id(self):
+		self._msg_id +=1
+		self._msg_id = 1 if self._msg_id > 0xFFFF else self._msg_id
+		return self._msg_id
+		
+	async def _settimeout(self,timeout):
+		if timeout != self._timeout:
+			self._timeout = timeout
+			if self._ext_socket :
+				await self.conn.settimeout(timeout)
+			else :
+				self.conn.settimeout(timeout)
+			
+	async def _recv(self,length,timeout=0):
+		await self._settimeout(timeout)
+		try:
+			if self._ext_socket :
+				self._rx_data 

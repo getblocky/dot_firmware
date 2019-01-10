@@ -1,4 +1,4 @@
-de if temporarily entered stop mode
+turn to previous mode if temporarily entered stop mode
 		if config != 0:
 			self._register8(94, config)
 
@@ -48,13 +48,10 @@ de if temporarily entered stop mode
 									if core.flag.duplicate == True :
 										core.mainthread.call_soon ( core.asyn.Cancellable( self.handler[x][0] )() )
 									else :
-										await core.call_once('user_mpr121_{}.{}'.format(x,1),self.handler[x][0])
+										await core.call_once('user_mpr121_{}_{}_{}'.format(self.port , x,1),self.handler[x][0])
 							else :
 								if self.handler[x][1] != None :
 									if core.flag.duplicate == True :
 										core.mainthread.call_soon ( core.asyn.Cancellable( self.handler[x][1] )() )
 									else :
-										await core.call_once('user_mpr121_{}.{}'.format(x,0),self.handler[x][1])
-										
-				self.prev = now
-			except Exce
+										await core.call_once('user_mpr121_{}_{}_{}'.format(self.port , x,0),self.handler[x][

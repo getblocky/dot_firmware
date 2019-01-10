@@ -1,4 +1,5 @@
-te("\r\n")
+def _writeEndHeader(self) :
+			self._write("\r\n")
 		
 		#def _writeBeforeContent(self, code, headers, contentType, contentCharset, contentLength) :
 		#	pass		
@@ -62,5 +63,4 @@ te("\r\n")
 				
 		
 
-		def WriteResponseOk(self, headers=None, contentType=None, contentCharset=None, content=None) :
-			return se
+		def WriteResponseOk(self, headers=None, contentType=None, contentCh

@@ -1,4 +1,5 @@
-lf.WriteResponse(200, headers, contentType, contentCharset, content)
+arset=None, content=None) :
+			return self.WriteResponse(200, headers, contentType, contentCharset, content)
 		
 
 

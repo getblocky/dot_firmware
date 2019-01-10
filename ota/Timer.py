@@ -28,16 +28,30 @@ def runtime():
 # This function should be call randomly every 10 minutes
 
 	
-def sync_ntp():
-	if core.wifi.wlan_sta.isconnected():
+async def sync_ntp():
+	if core.eeprom.get('EXT_RTC') == True :
+		return
+	else :
 		NTP_QUERY = bytearray(48)
 		NTP_QUERY[0] = 0x1b
-		addr = core.socket.getaddrinfo("pool.ntp.org", 123)[0][-1]
-		s = core.socket.socket(core.socket.AF_INET, core.socket.SOCK_DGRAM)
-		s.settimeout(1)
-		res = s.sendto(NTP_QUERY, addr)
-		msg = s.recv(48)
-		s.close()
+		
+		if core.eeprom.get('EXT_SOCKET') == True :
+			s = core.ext_socket.socket(core.ext_socket.AF_INET,core.ext_socket.SOCK_DGRAM)
+			await s.settimeout(1)
+			res = await s.sendto(NTP_QUERY,["pool.ntp.org",123])
+			msg = await s.recv(48)
+			await s.close()
+		else :
+			if core.wifi.wlan_sta.isconnected():
+				addr = core.socket.getaddrinfo("pool.ntp.org", 123)[0][-1]
+				s = core.socket.socket(core.socket.AF_INET, core.socket.SOCK_DGRAM)
+				s.settimeout(1)
+				res = s.sendto(NTP_QUERY, addr)
+				msg = s.recv(48)
+				s.close()
+			else :
+				return
+				
 		val = core.struct.unpack("!I", msg[40:44])[0]
 		t = val - 3155673600
 		gmt = core.eeprom.get('GMT')
@@ -54,21 +68,5 @@ def current(field=None):
 		return 
 	if field==None:
 		return core.time.localtime()
-	if field == "year":
-		return core.time.localtime()[0]
-	if field == "month":
-		return core.time.localtime()[1]
-	if field == "date":
-		return core.time.localtime()[2]
-	if field == "hour":
-		return core.time.localtime()[3]
-	if field == "minute":
-		return core.time.localtime()[4]
-	if field == "second":
-		return core.time.localtime()[5]
-	if field == "day":
-		day = core.time.localtime()[6]
-		if day == 0 :
-			return "Monday"
-		if day == 1 :
-			retur
+	if field == "clock":
+		return '{}:{}:{}'.format(core.time.localtime()[3],core

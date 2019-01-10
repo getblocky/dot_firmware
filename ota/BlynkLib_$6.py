@@ -1,51 +1,53 @@
-ocket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_SEC)
-							self.conn = ssl.wrap_socket(ss, cert_reqs=ssl.CERT_REQUIRED, ca_certs='/flash/cert/ca.pem')
-						else:
-							print('TCP: Connecting to %s:%d' % (self._server, self._port))
-							self.conn = socket.socket()
-							print('Socket')
-						self.conn.settimeout(0.1)
-						
-						while True :
-							await core.asyncio.sleep_ms(5000)
-							try :
-								b=socket.getaddrinfo(self._server, self._port)[0][4]
-								self.conn.connect(b)
-								break
-							except OSError:
-								print('>')
-								continue
-						print('Connected')
-					except Exception as err:
-						core.sys.print_exception(err)
-						self._close('connection with the Blynk servers failed')
-						continue
-					await core.indicator.show('blynk-authenticating')
-					self.state = AUTHENTICATING
-					hdr = struct.pack(HDR_FMT, MSG_LOGIN, self._new_msg_id(), len(self._token))
-					print('Blynk connection successful, authenticating...')
-					self._send(hdr + self._token, True)
-					data = self._recv(HDR_LEN, timeout=MAX_SOCK_TO)
-					if not data:
-						self._close('Blynk authentication timed out')
-						core.indicator.animate('blynk-failed')
-						continue
+Online at {}'.format(core.Timer.current('clock')))
+				
+			if self.state == AUTHENTICATED:
+				break
+		# connection established , perform polling
+		self._hb_time = 0
+		self._last_hb_id = 0
+		self._tx_count = 0
+		core.flag.blynk = True
+		while True :
+			self.last_call = core.Timer.runtime()
+			try :
+				data = await self._recv(HDR_LEN,NON_BLK_SOCK)
+			except:
+				pass
+			if data:
+				msg_type,msg_id,msg_len = core.struct.unpack(HDR_FMT,data)
+				if msg_id == 0:
+					await self._close('invalid msg id : {}'.format(msg_len))
+					break
+				if msg_type == MSG_RSP:
+					if msg_id == self._last_hb_id:
+						self._last_hb_id = 0
+				elif msg_type == MSG_PING:
+					await self._send(core.struct.pack(HDR_FMT,MSG_RSP,msg_id,STA_SUCCESS))
+				elif msg_type == MSG_HW or msg_type == MSG_BRIDGE:
+					data = await self._recv(msg_len,MIN_SOCK_TO)
+					if data :
+						await self._handle_hw(data)
+				else :
+					print('close: unknown message type {} , ignoring'.format(msg_type))
+					continue
+			else :
+				await core.wait(1)
+				
+			if not self._server_alive():
+				await self._close('blynk server is offline')
+				print('[Blynk] Connecting back to server')
+				core.flag.blynk = False
+				await core.indicator.show('blynk-authenticating')
+				return
+			else :
+				core.flag.blynk = True
+			await core.wait(1)
+		
 
-					msg_type, msg_id, status = struct.unpack(HDR_FMT, data)
-					if status != STA_SUCCESS or msg_id == 0:
-						self._close('Blynk authentication failed')
-						core.indicator.animate('blynk-failed')
-						continue
-					await core.indicator.show('blynk-authenticated')
-					self.state = AUTHENTICATED
-					self._send(self._format_msg(MSG_INTERNAL, 'ver', '0.1.3', 'buff-in', 4096, 'h-beat', HB_PERIOD, 'dev', sys.platform+'-py',open('Blocky/fuse.py').read()))
-					print("[BLYNK] Happy Blynking ! ")
-					for x in range(5):
-						core.indicator.rgb.fill((0,x*8,0))
-						core.indicator.rgb.write()
-						await core.asyncio.sleep_ms(10)
-					for x in range(5,-1,-1):
-						core.indicator.rgb.fill((0,x*8,0))
-						core.indicator.rgb.write()
-						await core.asyncio.sleep_ms(10)
-					core.flag.blynk =
+
+
+
+
+
+
+

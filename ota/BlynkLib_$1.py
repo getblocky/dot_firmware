@@ -1,64 +1,57 @@
- 0
-		self._token = token
-		self.message = None
-		if isinstance (self._token, str):
-			self._token = token.encode('ascii')
-		self._server = server
-		if port is None:
-			if ssl:
-				port = 8441
-			else:
-				port = 80
-		self._port = port
-		self._do_connect = connect
-		self._ssl = ssl
-		self.state = DISCONNECTED
-		self.conn = None
-		self.last_call = core.Timer.runtime()
-		self.ota = ota
+r_pins[str(pin)] = write
 		
-	def _format_msg(self, msg_type, *args):
-		data = ('\0'.join(map(str, args))).encode('ascii')
-		return struct.pack(HDR_FMT, msg_type, self._new_msg_id(), len(data)) + data
-	
-	async def _handle_hw(self, data):
+	async def _handle_hw(self,data):
+		print('[Blynk] : Handling data ')
 		try :
-			params = list(map(lambda x: x.decode('ascii'), data.split(b'\0')))
+			params = list(map(lambda x:x.decode('ascii'),data.split(b'\0')))
 			cmd = params.pop(0)
-			if cmd == 'pm'or cmd == 'dr' or cmd == 'dw' or cmd == 'ar' or cmd == 'aw':
-				pass
-			# Handle Virtual Write operation
-			elif cmd == 'vw': 
+			if cmd == 'vw' or cmd == 'vr':
 				pin = int(params.pop(0))
 				
-				if pin == 125 :
-					print('[Blynk->Execute(125)]\t',end='') 
-					ota_lock = core.eeprom.get('OTA_LOCK')
-					if (ota_lock==True and core.cfn_btn.value()==0)or ota_lock==False or ota_lock==None:
+				# Repr channel
+				if pin == 127 :
+					core.flag.direct_command = True
+					try :
+						out = eval(params[0])
+						if out != None :
+							await self.log('[REPR] {}'.format(repr(out)))
+					except:
 						try :
-							exec(params[0] , globals())
-							print('OK')
-						except Exception as err :
-							print(err)
-							self.log("Can't execute that -> {}".format(err))
-					else :
-						print('[FLAG_OTA_LOCKED]')
-					
-					
-				if pin == 126 :
-					print('['+str(core.Timer.runtime())+'] OTA Message Received')
+							exec(params[0])
+						except Exception as err:
+							await self.log('[EXCEPTION] {}'.format(repr(err)))
+				
+				# OTA Channel
+				elif pin == 126 :
+					print('[{}] OTA Message Received'.format(core.Timer.runtime()))
 					core.gc.collect()
 					ota_lock = core.eeprom.get('OTA_LOCK')
-					
-					if (ota_lock == True and core.cfn_btn.value() == 0) or ota_lock == False or ota_lock == None :
-						if core.ota_file == None :
+					if (ota_lock==True and core.cfn_btn.value()==0)or ota_lock != True :
+						if core.ota_file == None:
 							core.ota_file = open('temp_code.py','w')
-						if params[1] == "OTA":
+							core.ota_file.write(core.prescript)
+						if params[1] == 'OTA':
 							await core.asyn.Cancellable.cancel_all()
 							await core.cleanup()
-							core.ota_file.write("import sys\ncore=sys.modules['Blocky.Core']\n")
+							await core.indicator.pulse(color = (0,15,25))
+							await self.log('[OTA_READY]')
+						elif params[1] == "[OTA_CANCEL]":
+							if core.ota_file:
+								core.ota_file.flush()
+								core.ota_file.close()
 						else :
-							print('PART' , params[1] ,len(params[0]) , end = '')
 							total_part = int(params[1].split('/')[1])
-							curr_part = int(params[1].split('/')[0])
+							curre_part = int(params[1].split('/')[0])
+							sha1 = core.binascii.hexlify(core.hashlib.sha1(params[0]).digest()).decode('utf-8')
+							print('[PART {}/{} , length = {} , sha1 = {}'.format(curre_part,total_part,len(params[0]),sha1))
+							if total_part == curre_part:
+								core.ota_file.write(params[0])
+								core.ota_file.flush()
+								core.ota_file.close()
+								core.ota_file = None
+								core.os.rename('temp_code.py','user_code.py')
+								await self.log('[OTA_ACK]' + str([sha1,params[1]]))
+								await self.log('[OTA_DONE]')
+								print('user code saved')
+								#await core.indicator.pulse(color = (0,50,0))
 	

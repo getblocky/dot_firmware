@@ -1,4 +1,4 @@
-#version=1.0
+#version=2.0
 """
 MicroPython MPR121 capacitive touch keypad and breakout board driver
 https://github.com/mcauser/micropython-mpr121
@@ -33,6 +33,7 @@ def get_bit(byteval,idx):
 class MPR121:
 	def __init__(self, port, address=0x5A):
 		self.p = core.getPort( port )
+		self.port = port
 		self.i2c = core.machine.I2C ( scl = core.machine.Pin(self.p[0]) , sda = core.machine.Pin(self.p[1]) )
 		self.address = address
 		self.error = False
@@ -48,4 +49,4 @@ class MPR121:
 
 	def _register16(self, register, value=None):
 		if value is None:
-			data = self.i2c.readfrom_mem(self.addr
+			data = self.i2c.rea

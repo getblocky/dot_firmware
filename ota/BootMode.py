@@ -51,15 +51,16 @@ class BootMode :
 		
 		
 	def _httpHandlerCheckStatus(self, httpClient, httpResponse):
-		httpResponse.WriteResponseOk(headers = None,contentType= "text/html",	contentCharset = "UTF-8",content = 'OK')
 		print('checking')
 		if self.wlan_sta.isconnected():
 			self.wifi_status = 1
-			print('Connected to ' , request_json['ssid'])
+			print('Connected to ' , self.request_json['ssid'])
 			config = {}
 			try :
 				config = core.json.loads(open('config.json').read())
 			except :
 				pass
 			if not config.get('known_networks'):
-				config['known_netw
+				config['known_networks'] = [{'ssid': self.request_json['ssid'], 'password': self.request_json['password']}]
+			else:
+				exist

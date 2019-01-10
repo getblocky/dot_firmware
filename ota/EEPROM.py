@@ -1,41 +1,32 @@
 import sys
 core = sys.modules['Blocky.Core']
 
-# Is this a waste of flash ?
-# No , this is use for long-term memory
-
-if not "fuse.py" in core.os.listdir('Blocky'):
-	f = open('Blocky/fuse.py','w')
-	f.close()
-
-def get(name):
-	try :
-		f = open('Blocky/fuse.py')
-		b = core.json.loads(f.read())
-		f.close()
-		return b[name]
-	except:
-		return None
-def set(name,value):
-	print('[eeprom] set',name,'to',value ,end='')
-	try :
-		f = open('Blocky/fuse.py')
+class EEPROM :
+	def __init__(self,file='eeprom'):
+		self.file = file
+		if not self.file in core.os.listdir():
+			f = open(self.file,'w')
+			f.close()
+		self.data = {}
 		try :
-			b = core.json.loads(f.read())
+			self.data = core.json.loads(open(self.file).read())
 		except :
-			b = {}
-		f.close()
+			pass
+	def get(self,name):
 		try :
-			if b[name]==value:
-				print('UnchangedValue')
-				return
+			value = self.data[name]
+			return value
+		except KeyError:
+			return None
+		
+	def set(self,name,value):
+		try :
+			if self.data[name] == value:
+				return False
 		except KeyError:
 			pass
-		print('3')
-		b[name] = value
-		f = open('Blocky/fuse.py','w')
-		f.write(core.json.dumps(b))
+		self.data[name] = value
+		f = open(self.file,'w')
+		f.write(core.json.dumps(self.data))
 		f.close()
-		print('ChangedValue')
-	except:
-		return None
+		return True

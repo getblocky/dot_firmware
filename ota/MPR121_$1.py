@@ -1,4 +1,4 @@
-ess, register, 2)
+dfrom_mem(self.address, register, 2)
 			return core.struct.unpack("<H", data)[0]
 		self.i2c.writeto_mem(self.address, register, core.struct.pack("<H", value))
 
@@ -58,4 +58,4 @@ ess, register, 2)
 			self._register8(65 + i * 2, touch)
 			self._register8(66 + i * 2, release)
 
-		# return to previous mo
+		# re

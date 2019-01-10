@@ -1,4 +1,11 @@
-.get_list_library('user_code.py')
+rint('[user-code] -> run directly')
+		core._failsafeActive(True)
+		core.user_code = __import__('user_code')
+		core.gc.collect()
+		await core.blynk.log('[HEAP] {}'.format(core.gc.mem_free())  )
+		return 
+		
+	list_library = core.get_list_library('user_code.py')
 	list_library_update = []
 	for x in list_library:
 		print('[library] -> checking {}'.format(x) , end = '')
@@ -12,11 +19,7 @@
 	if len(list_library_update):
 		core.eeprom.set('LIB',list_library_update)
 		core.machine.reset()
-		
-	try :
-		wdt_timer.init(mode=core.machine.Timer.PERIODIC,period=20000,callback = _failsafe)
-	except :
-		pass
+	core._failsafeActive(True)
 	try :
 		del core.sys.modules['user_code']
 	except :
@@ -25,42 +28,39 @@
 	print('[user_code] -> started with {} heap'.format(core.gc.mem_free()))
 	try :
 		core.user_code = __import__('user_code')
+		core.gc.collect()
+		await core.blynk.log('[HEAP] {}'.format(core.gc.mem_free()) )
 	except RuntimeError:
 		del core.sys.modules['user_code']
 		while not core.wifi.wlan_sta.isconnected() or core.flag.blynk == False:
 			await core.asyncio.sleep_ms(500)
 		core.mainthread.create_task(run_user_code(True))
 		return
-	except MemoryError:
-		del core.sys.modules['user_code']
-		print('[memory] -> removing user code')
-		try :
-			os.rename('user_code.py','temp_code.py')
-		except :
-			pass
-		f = open('last_word.py','w')
-		f.write('[warning] -> your code has been deleted because it use so much memory')
-		f.close()
-		for x in range(20):
-			core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write();sleep_ms(50)
-			core.indicator.rgb.fill((0,0,0));core.indicator.rgb.write();sleep_ms(50)
+	except MemoryError as err:
+		if not core.flag.direct_command:
+			del core.sys.modules['user_code']
+			print('[memory] -> removing user code')
+			try :
+				core.os.rename('user_code.py','temp_code.py')
+			except :
+				pass
+			f = open('last_word.py','w')
+			f.write('[DOT_ERROR] MEMORY {}'.format(err))
+			f.close()
+			for x in range(20):
+				core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write();core.time.sleep_ms(50)
+				core.indicator.rgb.fill((0,0,0));core.indicator.rgb.write();core.time.sleep_ms(50)
 		core.machine.reset()
 	
 async def send_last_word():
-	if "last_word.py" in core.os.listdir():
-		while not core.flag.wifi:
-			await core.asyncio.sleep_ms(500)
-		try :
-			print('[lastword] -> {}'.format(open('last_word.py').read()))
-			core.blynk.log(open('last_word.py').read())
-		except :
-			pass
-		core.os.remove('last_word.py')
 
-async def main(online=False):
-	if not core.cfn_btn.value():
-		time = core.time.ticks_ms()
-		print('Configure: ',end='')
-		while not core.cfn_btn.value():
-			core.time.sleep_ms(500)
-			temp = ( core.time.ticks_ms() - time ) //100
+
+
+
+
+	if "last_word.py" in core.os.listdir():
+		while core.blynk.state != 3 :
+			await core.wait(200)
+		try :
+			print('[lastword] -> {}'.format(open('last_word.py').read()),end = '')
+			await core.blynk.log(open('last_word.py').read())

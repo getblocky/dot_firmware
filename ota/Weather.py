@@ -47,7 +47,7 @@ class Weather:
 			temp = self.weather.temperature()
 			humd = self.weather.humidity()
 			
-			await asyncio.sleep_ms(2500)
+			await wait(2500)
 			try :
 				self.weather.measure()
 			except Exception:
@@ -68,4 +68,5 @@ class Weather:
 					if self.cb_humidity[1] == 'f':
 						self.cb_humidity[0](self.weather.humidity())
 					if self.cb_humidity[1] == 'g':
-						loop = asyncio.get_event_loop(
+						loop = asyncio.get_event_loop()
+						loop

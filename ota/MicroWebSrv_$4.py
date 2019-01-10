@@ -1,4 +1,5 @@
-f._headers.get("Content-Length", 0))
+one)
+						self._contentLength = int(self._headers.get("Content-Length", 0))
 					return True
 				else :
 					return False
@@ -71,5 +72,4 @@ f._headers.get("Content-Length", 0))
 				ct = "application/octet-stream"
 			self._writeHeader("Content-Type", ct)
 		
-		def _writeEndHeader(self) :
-			self._wri
+		

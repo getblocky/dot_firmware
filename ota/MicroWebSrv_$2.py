@@ -1,4 +1,7 @@
-def SetNotFoundPageUrl(self, url=None) :
+tarted(self) :
+		return self._started
+
+	def SetNotFoundPageUrl(self, url=None) :
 		self._notFoundUrl = url
 
 	def GetMimeTypeFromFilename(self, filename) :
@@ -66,5 +69,4 @@ def SetNotFoundPageUrl(self, url=None) :
 								routeHandler(self,response)
 							
 							else :
-								response.WriteResponseMethodNotAllowed()
-						eli
+								response.W

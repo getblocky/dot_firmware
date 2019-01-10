@@ -1,4 +1,5 @@
-f upg == 'websocket' and 'MicroWebSocket' in globals() \
+riteResponseMethodNotAllowed()
+						elif upg == 'websocket' and 'MicroWebSocket' in globals() \
 							 and self._microWebSrv.AcceptWebSocketCallback :
 								MicroWebSocket( socket		 = self._socket,
 												httpClient	 = self,
@@ -52,5 +53,4 @@ f upg == 'websocket' and 'MicroWebSocket' in globals() \
 					self._headers[elements[0].strip()] = elements[1].strip()
 				elif len(elements) == 1 and len(elements[0]) == 0 :
 					if self._method == 'POST' :
-						self._contentType	 = self._headers.get("Content-Type", None)
-						self._contentLength = int(sel
+						self._contentType	 = self._headers.get("Content-Type", N

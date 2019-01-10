@@ -1,5 +1,4 @@
-
-#version=1.0
+#version=2.0
 import sys
 core=sys.modules['Blocky.Core']
 class Relay :
@@ -11,13 +10,20 @@ class Relay :
 		self.switch.value(0)
 		
 	def turn(self , state):
-		if state == "flip" :
-			self.switch.value(not self.switch.value())
-		else :
-			try :
-
-				self.switch.value( state )
-			except :
-				pass
-
+		try :
+			if isinstance(state , int):
+				self.switch.value(state)
+			elif isinstance(state , str):
+				if state == 'on':
+					self.switch.value(1)
+				elif state == 'off':
+					self.switch.value(0)
+				elif state == 'flip':
+					self.switch.value(not self.switch.value())
+		except :
+			pass
+	def state(self):
+		return self.switch.value()
+	def flip(self):
+		self.switch.value(not self.switch.value())
 

@@ -1,10 +1,10 @@
 #version=1.0
 # All public variable across the system to avoid duplicate import
+prescript  = "import sys\ncore=sys.modules['Blocky.Core']\n"
 rtc = False
 asyncio = None 
 asyn = None 
 flag = None 
-eeprom = None
 mqtt = None
 BootMode = None
 indicator = None
@@ -14,33 +14,23 @@ deinit_list = []
 alarm_list = []
 user_namedtask = []
 wdt_timer = None
-import time
-import machine
-import neopixel
-import binascii
-import json
-import ure
-import gc
-import network
-import sys
-import micropython
-import socket
-import struct
-import _thread
-import urequests
-import random
-import os
+wifi_list  = {}
+ext_socket = None
+user_code = None
+version = [1.0,'Nidalee Build']
+dict = {}
+import time,machine,neopixel,binascii,json,ure,gc,hashlib,network,sys
+import micropython,socket,struct,_thread,urequests,random,os
 import Blocky.Global as flag
-import Blocky.EEPROM as eeprom
-import Blocky.uasyncio as asyncio
 import Blocky.asyn as asyn
 import Blocky.Timer as Timer
 from Blocky.Indicator import indicator
 from Blocky.Pin import getPort
-
+import Blocky.EEPROM
+eeprom = Blocky.EEPROM.EEPROM('eeprom')
 cfn_btn = machine.Pin(12 , machine.Pin.IN , machine.Pin.PULL_UP)
+import Blocky.uasyncio as asyncio
 mainthread = asyncio.get_event_loop()
-
 wifi = None # Wifi class started in Main
 TimerInfo = [time.ticks_ms() , time.ticks_ms() , None , None]
 
@@ -82,7 +72,6 @@ async def cleanup():
 		
 async def call_once(name,function):
 	print('[CALLING] {} -> {}'.format(name,function))
-	if name in asyn.NamedTask.instances:
-		if asyn.NamedTask.is_running(name):
-			await asyn.NamedTask.cancel ( name )
-			while a
+	try :
+		if name in asyn.NamedTask.instances:
+		
