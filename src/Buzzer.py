@@ -50,13 +50,14 @@ class Buzzer:
 							self.pwm.freq(sequence[x])
 						else :
 							self.pwm.duty(0)
-							
 						await core.wait(sequence[x+1])
 						self.pwm.duty(0)
 						await core.wait(gap)
 						self.pwm.duty(duty or 100)
 					self.pwm.duty(0)
-		except :
+		except (TypeError,ValueError) as err :
+			import sys
+			sys.print_exception(err)
 			pass
 			
 			

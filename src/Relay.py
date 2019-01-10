@@ -1,4 +1,4 @@
-#version=1.0
+#version=2.0
 import sys
 core=sys.modules['Blocky.Core']
 class Relay :
@@ -6,7 +6,7 @@ class Relay :
 		self.p = core.getPort(port)
 		if self.p[0] == None :
 			return 
-		self.switch = Pin(self.p[0] , Pin.OUT)
+		self.switch = core.machine.Pin(self.p[0] , core.machine.Pin.OUT)
 		self.switch.value(0)
 		
 	def turn(self , state):
@@ -22,7 +22,7 @@ class Relay :
 					self.switch.value(not self.switch.value())
 		except :
 			pass
-	def state(self)::
+	def state(self):
 		return self.switch.value()
 	def flip(self):
 		self.switch.value(not self.switch.value())

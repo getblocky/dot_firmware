@@ -1,4 +1,4 @@
-#version=2.0
+#version=2.1
 
 import sys
 core = sys.modules['Blocky.Core']
@@ -7,7 +7,7 @@ class LED:
 	def __init__(self,port):
 		self.p = core.getPort(port)
 		if self.p[0] == None : return 
-		self.pwm = core.machine.PWM(self.pin, duty = 0 , freq = 38000)
+		self.pwm = core.machine.PWM(core.machine.Pin(self.p[0]), duty = 0 , freq = 38000)
 		
 	def turn (self , value):
 		try :
@@ -24,13 +24,14 @@ class LED:
 				elif value == 'flip':
 					if self.pwm.duty() == 0 :
 						self.pwm.duty(1023)
-					else self.pwm.duty(0)
+					else :
+						self.pwm.duty(0)
 		except :
 			pass
 				
 	def fade(self , value):
 		try :
-			value = max(0,min(1023,value))
+			value = max(0,min(1023,value//4))
 			self.pwm.init(duty = value , freq = 38000)
 		except :
 			pass

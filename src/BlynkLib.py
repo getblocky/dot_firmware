@@ -75,6 +75,9 @@ class Blynk:
 		data = ('\0'.join(map(str,args))).encode('ascii')
 		return core.struct.pack(HDR_FMT,msg_type,self._new_msg_id(),len(data)) + data
 	
+	def add_virtual_pin(self, pin , write):
+		self._vr_pins[str(pin)] = write
+		
 	async def _handle_hw(self,data):
 		print('[Blynk] : Handling data ')
 		try :
@@ -94,7 +97,7 @@ class Blynk:
 						try :
 							exec(params[0])
 						except Exception as err:
-							await self.log('[EXCEPTION] {}'.format(repr(e)))
+							await self.log('[EXCEPTION] {}'.format(repr(err)))
 				
 				# OTA Channel
 				elif pin == 126 :
@@ -154,7 +157,7 @@ class Blynk:
 				
 				# User defined channel
 				# Note that "vr" and "vw" is the same
-				elif (pin in self._vr_pins):
+				elif (str(pin) in self._vr_pins):
 					self.message = params
 					for x in range(len(self.message)):
 						try :
@@ -164,8 +167,8 @@ class Blynk:
 					if len(self.message) == 1:
 						self.message = self.message[0]
 					print('[BLYNK] V{} {} -> {}'.format(pin,type(self.message),self.message))
-					if callable(self._vr_pins[pin]):
-						await core.call_once('user_blynk_{}_vw'.format(pin),self._vr_pins[pin])
+					if callable(self._vr_pins[str(pin)]):
+						await core.call_once('user_blynk_{}_vw'.format(pin),self._vr_pins[str(pin)])
 				else :
 					print('unregistered channel {}'.format(pin))
 		except Exception as err:
@@ -204,11 +207,13 @@ class Blynk:
 		if len(self._rx_data) >= length:
 			data = self._rx_data[:length]
 			self._rx_data = self._rx_data[length:]
+			#print('[Blynk] Receiving ' , data)
 			return data
 		else :
 			return b''
 			
 	async def _send(self,data):
+		#print('[Blynk] Sending ' , data)
 		retries = 0
 		while retries <= MAX_TX_RETRIES:
 			try :
@@ -331,7 +336,7 @@ class Blynk:
 						while core.ext_socket == None:
 							await core.wait(500)
 						self.conn = core.ext_socket.socket()
-						await self.conn.settimeout(0.1)
+						await self.conn.settimeout(2)
 					while True :
 						try :
 							if not self._ext_socket:

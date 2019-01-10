@@ -16,7 +16,9 @@ user_namedtask = []
 wdt_timer = None
 wifi_list  = {}
 ext_socket = None
-user_code = None 
+user_code = None
+version = [1.0,'Nidalee Build']
+dict = {}
 import time,machine,neopixel,binascii,json,ure,gc,hashlib,network,sys
 import micropython,socket,struct,_thread,urequests,random,os
 import Blocky.Global as flag
@@ -172,7 +174,7 @@ async def wait ( time ):
 	for x in range( time//500):
 		await asyncio.sleep_ms(500)
 	await asyncio.sleep_ms(time % 500)
-		
+	
 _failsafe = None
 def _failsafeActive(state):
 	if state == True :
