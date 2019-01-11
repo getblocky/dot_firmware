@@ -5,7 +5,7 @@
 # Copyright (c) 2015 Daniel Campora
 
 """
-	Add support for external socket hook 
+	Add support for external socket hook
 		+ SIM800L GPRS Networking
 		+ A9G
 		+ SIM808
@@ -62,7 +62,7 @@ class Blynk:
 				port = 8441
 			else :
 				port = 80
-		self._port = port 
+		self._port = port
 		self._ssl = ssl
 		self.state = DISCONNECTED
 		self.conn = None
@@ -70,14 +70,14 @@ class Blynk:
 		self.last_call = core.Timer.runtime()
 		self.ota = ota
 		self._ext_socket = True if core.eeprom.get('EXT_SOCKET') == True else False
-		
+
 	def _format_msg(self, msg_type,*args):
 		data = ('\0'.join(map(str,args))).encode('ascii')
 		return core.struct.pack(HDR_FMT,msg_type,self._new_msg_id(),len(data)) + data
-	
+
 	def add_virtual_pin(self, pin , write):
 		self._vr_pins[str(pin)] = write
-		
+
 	async def _handle_hw(self,data):
 		print('[Blynk] : Handling data ')
 		try :
@@ -85,7 +85,7 @@ class Blynk:
 			cmd = params.pop(0)
 			if cmd == 'vw' or cmd == 'vr':
 				pin = int(params.pop(0))
-				
+
 				# Repr channel
 				if pin == 127 :
 					core.flag.direct_command = True
@@ -98,7 +98,7 @@ class Blynk:
 							exec(params[0])
 						except Exception as err:
 							await self.log('[EXCEPTION] {}'.format(repr(err)))
-				
+
 				# OTA Channel
 				elif pin == 126 :
 					print('[{}] OTA Message Received'.format(core.Timer.runtime()))
@@ -137,7 +137,7 @@ class Blynk:
 									await core.wait(1)
 								for x in range(50,-1,-1):
 									core.indicator.rgb.fill((0,x,0));core.indicator.rgb.write()
-									await core.wait(1)											
+									await core.wait(1)
 								core.mainthread.call_soon(self.ota())
 							if curre_part < total_part:
 								progress = int(curre_part)%13
@@ -151,10 +151,10 @@ class Blynk:
 								core.ota_file.write(params[0])
 								core.ota_file.flush()
 								await self.log('[OTA_ACK]'+str([sha1,params[1]]))
-								
+
 					else :
 						await self.log('[DOT_ERROR] OTA_LOCKED')
-				
+
 				# User defined channel
 				# Note that "vr" and "vw" is the same
 				elif (str(pin) in self._vr_pins):
@@ -174,12 +174,12 @@ class Blynk:
 		except Exception as err:
 			import sys;sys.print_exception(err)
 			pass
-	
+
 	def _new_msg_id(self):
 		self._msg_id +=1
 		self._msg_id = 1 if self._msg_id > 0xFFFF else self._msg_id
 		return self._msg_id
-		
+
 	async def _settimeout(self,timeout):
 		if timeout != self._timeout:
 			self._timeout = timeout
@@ -187,7 +187,7 @@ class Blynk:
 				await self.conn.settimeout(timeout)
 			else :
 				self.conn.settimeout(timeout)
-			
+
 	async def _recv(self,length,timeout=0):
 		await self._settimeout(timeout)
 		try:
@@ -195,7 +195,7 @@ class Blynk:
 				self._rx_data += await self.conn.recv(length)
 			else :
 				self._rx_data += self.conn.recv(length)
-			
+
 		except OSError as err:
 			if err.args[0]==errno.ETIMEDOUT:
 				return b''
@@ -211,7 +211,7 @@ class Blynk:
 			return data
 		else :
 			return b''
-			
+
 	async def _send(self,data):
 		#print('[Blynk] Sending ' , data)
 		retries = 0
@@ -231,7 +231,7 @@ class Blynk:
 					await core.wait(200)
 				else :
 					await core.wait(RE_TX_DELAY)
-	
+
 	async def _close(self,emsg=None):
 		if self._ext_socket :
 			await self.conn.close()
@@ -241,7 +241,7 @@ class Blynk:
 		await core.wait(RECONNECT_DELAY)
 		if emsg:
 			print('[BLYNK] Error: {}, connection closed'.format(emsg))
-	
+
 	async def _server_alive(self):
 		c_time = core.Timer.runtime()
 		if self._m_time != c_time:
@@ -249,17 +249,17 @@ class Blynk:
 			self._tx_count = 0
 			if self._last_hb_id != 0 and c_time - self._hb_time >= MAX_SOCK_TO:
 				return False
-			
+
 			if c_time - self._hb_time >= HB_PERIOD and self.state == AUTHENTICATED:
 				self._hb_time = c_time
 				self._last_hb_id = self._new_msg_id()
 				await self._send(core.struct.pack(HDR_FMT,MSG_PING,self._last_hb_id,0))
-		return True		
-		
+		return True
+
 	async def notify(self,msg):
 		if self.state == AUTHENTICATED:
 			await self._send(self._format_msg(MSG_NOTIFY, msg))
-	
+
 	async def tweet(self, msg):
 		if self.state == AUTHENTICATED:
 			await self._send(self._format_msg(MSG_TWEET, msg))
@@ -272,10 +272,10 @@ class Blynk:
 		if self.state == AUTHENTICATED:
 			if device == None:
 				await self._send(self._format_msg(MSG_HW, 'vw', pin, val))
-			else : 
+			else :
 				await self._send(self._format_msg(MSG_BRIDGE ,124, 'i' , device)) # Set channel V124 of this node to point to that device
 				await self._send(self._format_msg(MSG_BRIDGE, 124,'vw',  pin , val))
-				
+
 	async def set_property(self, pin, prop, val):
 		if self.state == AUTHENTICATED:
 			await self._send(self._format_msg(MSG_PROPERTY, pin, prop, val))
@@ -286,10 +286,10 @@ class Blynk:
 				await self._send(self._format_msg(MSG_EVENT_LOG, event))
 			else:
 				await self._send(self._format_msg(MSG_EVENT_LOG, event, descr))
-				
+
 	async def log(self,message):
 		await self.virtual_write(device = self._token.decode('utf-8') , pin = 127 , val = message )
-		
+
 	async def sync_all(self):
 		if self.state == AUTHENTICATED:
 			await self._send(self._format_msg(MSG_HW_SYNC))
@@ -297,10 +297,10 @@ class Blynk:
 	async def sync_virtual(self, pin):
 		if self.state == AUTHENTICATED:
 			await self._send(self._format_msg(MSG_HW_SYNC, 'vr', pin))
-	
+
 	async def sending(self,to,data):
 		await self._send(self._format_msg(MSG_HW,'vw',pin,val))
-		
+
 	async def run(self):
 		self._start_time = core.Timer.runtime()
 		self._task_millis = self._start_time
@@ -311,7 +311,7 @@ class Blynk:
 		self._tx_count = 0
 		self._m_time = 0
 		self.state = DISCONNECTED
-		
+
 		if not self._ext_socket:
 			while not core.wifi.wlan_sta.isconnected():
 				self.last_call = core.Timer.runtime()
@@ -327,10 +327,10 @@ class Blynk:
 					core.gc.collect()
 					core.indicator.show('blynk-connecting')
 					self.state = CONNECTING
-					
+
 					if not self._ext_socket :
 						print('TCP: Connting to {} : {}'.format(self._server,self._port))
-						self.conn = core.socket.socket() 
+						self.conn = core.socket.socket()
 						self.conn.settimeout(1)
 					else :
 						while core.ext_socket == None:
@@ -344,7 +344,7 @@ class Blynk:
 								self.conn.connect(b)
 								break
 							else :
-								await self.conn.connect(self._server,self._port)
+								await self.conn.connect((self._server,self._port))
 								break
 						except OSError as err:
 							import sys;sys.print_exception(err)
@@ -356,7 +356,7 @@ class Blynk:
 					core.sys.print_exception(err)
 					await self._close('connection with the Blynk servers failed')
 					break
-				
+
 				await core.indicator.show('blynk-authenticating')
 				self.state = AUTHENTICATING
 				hdr = core.struct.pack(HDR_FMT, MSG_LOGIN, self._new_msg_id(), len(self._token))
@@ -377,7 +377,7 @@ class Blynk:
 				await core.indicator.pulse(color = (0,40,0))
 				core.flag.blynk = True
 				await self.log('[BLYNK] Online at {}'.format(core.Timer.current('clock')))
-				
+
 			if self.state == AUTHENTICATED:
 				break
 		# connection established , perform polling
@@ -410,7 +410,7 @@ class Blynk:
 					continue
 			else :
 				await core.wait(1)
-				
+
 			if not self._server_alive():
 				await self._close('blynk server is offline')
 				print('[Blynk] Connecting back to server')
@@ -420,12 +420,3 @@ class Blynk:
 			else :
 				core.flag.blynk = True
 			await core.wait(1)
-		
-
-
-
-
-
-
-
-

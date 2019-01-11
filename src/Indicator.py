@@ -4,14 +4,14 @@ core = sys.modules['Blocky.Core']
 class Indicator :
 	def __init__ (self):
 		self.animation = ''
-		self.color = (0,0,0) # color that user set 
+		self.color = (0,0,0) # color that user set
 		self.fcolor = [0,0,0] # color that the handler use
 		self.rgb = NeoPixel(core.machine.Pin(5) , 12 , timing = True )
 		self.speed = 0
 		self.rgb.write()
 		self.gap = 1
 		self.running = 0
-	
+
 	async def heartbeat(self,color , speed , exit , gap = 1):
 		return
 		self.color = color
@@ -37,11 +37,11 @@ class Indicator :
 					break
 			else :
 				if exit == True :
-					break 
+					break
 		self.rgb.fill(  (0,0,0) )
 		self.rgb.write()
 
-	
+
 	async def animate(self , name):
 		await core.asyn.rgb.NamedTask('indicator-handler').cancel ()
 		if name == 'ota-success':
@@ -53,7 +53,7 @@ class Indicator :
 				for x in range(255,0,-1):
 					self.rgb.fill((x,x,x));self.rgb.write()
 					await core.wait(1)
-		
+
 		elif name == 'blynk-authenticating':
 			pass
 		elif name == 'blynk-failed':
@@ -61,7 +61,7 @@ class Indicator :
 		elif name == 'blynk-success':
 			pass
 		core.mainthread.create_task ( core.asyn.rgb.NamedTask('indicator-handler',self.handler) )
-	
+
 	async def loading(self,color,gap=10,cancel=None,reverse = False):
 		# Cancel Condition either a flag or a function
 		# if the confition function is reversed then set the reverse to True
@@ -70,7 +70,7 @@ class Indicator :
 			while True :
 				if (callable(cancel) == True and cancel() != reverse ) or (callable(cancel) == False and cancel != reverse):
 					break
-				
+
 				for x in range(12):
 					await core.wait(gap)
 					self.rgb.fill((0,0,0))
@@ -82,19 +82,17 @@ class Indicator :
 							self.rgb[x-1 if x-1 >=0 else 11-x] = (color//2,color//2,color)
 							self.rgb[x-2 if x-2 >=0 else 11-x] = (5,0,5)
 							self.rgb.write()
-							# do something here 
+							# do something here
 		await core.call_once('indicator',temp)
-		
+
 	def colour (self,start,stop,colour,update=True):
 		try :
 			if isinstance(colour,str):
 				colour = colour.lstrip('#')
 				colour = list(max(0,min(255,int(colour[i:i+2], 16))) for i in (0, 2 ,4))
-				
-				for x in range(3):
-					colour[x] = colour[x] // 10
+
 				colour = tuple(colour)
-				
+
 			start = max(1,int(start))
 			stop = min(12,int(stop))
 			if start > stop :
@@ -136,10 +134,10 @@ class Indicator :
 					self.rgb[i] = new
 				self.rgb.write()
 		await core.call_once('indicator',temp)
-					
-					
-					
-					
+
+
+
+
 	async def show (self , state):
 		if state == 'blynk-authenticating':
 			@core.asyn.cancellable
@@ -216,10 +214,3 @@ class Indicator :
 		if state == None :
 			await core.call_once('indicator',None)
 indicator = Indicator()
-
-	
-
-
-
-
-
