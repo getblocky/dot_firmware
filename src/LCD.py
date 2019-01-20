@@ -1,5 +1,6 @@
 #version=1.0
 import sys;core = sys.modules['Blocky.Core']
+
 class I2cLcd():
 	def __init__(self, i2c, i2c_addr, num_lines, num_columns):
 		self.i2c = i2c
@@ -14,7 +15,7 @@ class I2cLcd():
 		self.cursor_y = 0
 		self.backlight = True
 		try :
-			self.init() 
+			self.init()
 		except :
 			pass
 	def init(self):
@@ -41,7 +42,7 @@ class I2cLcd():
 		if self.num_lines > 1:
 			cmd |= 0x08
 		self.hal_write_command(cmd)
-			
+
 	def clear(self):
 		self.hal_write_command(0x01)
 		self.hal_write_command(0x02)
@@ -119,7 +120,7 @@ class I2cLcd():
 
 	def hal_write_data(self, data):
 		raise NotImplementedError
-		
+
 	def hal_write_init_nibble(self, nibble):
 		byte = ((nibble >> 4) & 0x0f) << 4
 		self.i2c.writeto(self.i2c_addr, bytearray([byte | 0x04]))
@@ -149,7 +150,7 @@ class I2cLcd():
 		byte = (0x01 | (self.backlight << 3) | ((data & 0x0f) << 4))
 		self.i2c.writeto(self.i2c_addr, bytearray([byte | 0x04]))
 		self.i2c.writeto(self.i2c_addr, bytearray([byte]))
-		
+
 class LCD ():
 	def __init__(self , port , addr = 56 , line = 2 , column = 16):
 		self.p = port
@@ -166,12 +167,13 @@ class LCD ():
 			self.lcd.backlight_on()
 			self.lcd.display_on()
 		except Exception as err:
-			self.reinit = True 
+			self.reinit = True
 			print("[LCD] " , err)
 			pass
-	
+		core.deinit_list.append(self)
+
 	def clear(self,line=None): #line = 1 , line = 2 , 1 based
-		
+
 		try :
 			if self.reinit == True :
 				self.lcd.init()
@@ -194,20 +196,20 @@ class LCD ():
 				self.lcd.move_to(0,line-1)
 				right = str(right)
 				left = str(left)
-				
+
 				if len(right) > 0:
 					left =left[0:self.column-len(right)-1]
 					string = left +':' + ' '*(self.column-len(left)-len(right)-1)+ right
 				else :
 					string = left + ' '*(self.column-len(left))
-				
+
 				if len(string) > self.column :
 					string = string[0:self.column]
 				self.lcd.putstr(string)
 		except Exception :
 			self.reinit = True
 			pass
-			
+
 	def backlight(self , state = 'on'):
 		try :
 			if self.reinit == True :
@@ -220,4 +222,7 @@ class LCD ():
 		except Exception:
 			self.reinit = True
 			pass
-
+	def deinit(self):
+		self.clear()
+		Pin(self.p[0],Pin.IN)
+		Pin(self.p[1],Pin.IN)

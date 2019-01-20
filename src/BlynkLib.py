@@ -80,6 +80,7 @@ class Blynk:
 
 	async def _handle_hw(self,data):
 		print('[Blynk] : Handling data ')
+		print('[{}]'.format(len(data)) , data)
 		try :
 			params = list(map(lambda x:x.decode('ascii'),data.split(b'\0')))
 			cmd = params.pop(0)
@@ -113,6 +114,7 @@ class Blynk:
 							await core.cleanup()
 							await core.indicator.pulse(color = (0,15,25))
 							await self.log('[OTA_READY]')
+
 						elif params[1] == "[OTA_CANCEL]":
 							if core.ota_file:
 								core.ota_file.flush()
@@ -188,32 +190,31 @@ class Blynk:
 			else :
 				self.conn.settimeout(timeout)
 
-	async def _recv(self,length,timeout=0):
+	async def _recv(self,length,timeout=1000):
 		await self._settimeout(timeout)
-		try:
-			if self._ext_socket :
-				self._rx_data += await self.conn.recv(length)
-			else :
-				self._rx_data += self.conn.recv(length)
 
-		except OSError as err:
-			if err.args[0]==errno.ETIMEDOUT:
+		if length > len(self._rx_data):
+			# request more
+			try :
+				if self._ext_socket :
+					self._rx_data += await self.conn.recv(length)
+				else :
+					self._rx_data += self.conn.recv(length)
+			except OSError :
 				return b''
-			elif err.args[0] == errno.EAGAIN:
-				return b''
-			else :
-				core.flag.blynk = False
-				print('[BLYNK] Cant receive data , resetting blynk')
-		if len(self._rx_data) >= length:
-			data = self._rx_data[:length]
-			self._rx_data = self._rx_data[length:]
-			#print('[Blynk] Receiving ' , data)
-			return data
-		else :
-			return b''
+
+		data = self._rx_data[:length]
+		print('[blynk] , receiving ' , data , length , "==" , len(data))
+		print(self._rx_data)
+
+		self._rx_data = self._rx_data[length:]
+		print(self._rx_data)
+		print()
+		return data
 
 	async def _send(self,data):
 		#print('[Blynk] Sending ' , data)
+		print('>>> [_send]\t',data)
 		retries = 0
 		while retries <= MAX_TX_RETRIES:
 			try :
@@ -289,6 +290,7 @@ class Blynk:
 
 	async def log(self,message):
 		await self.virtual_write(device = self._token.decode('utf-8') , pin = 127 , val = message )
+		#await self.virtual_write( pin = 127 , val = message )
 
 	async def sync_all(self):
 		if self.state == AUTHENTICATED:
@@ -389,10 +391,12 @@ class Blynk:
 			self.last_call = core.Timer.runtime()
 			try :
 				data = await self._recv(HDR_LEN,NON_BLK_SOCK)
+				print('>>> received something' , data)
 			except:
 				pass
 			if data:
 				msg_type,msg_id,msg_len = core.struct.unpack(HDR_FMT,data)
+				print('type = {} , id = {} , len = {}'.format(msg_type,msg_id,msg_len))
 				if msg_id == 0:
 					await self._close('invalid msg id : {}'.format(msg_len))
 					break
@@ -405,9 +409,10 @@ class Blynk:
 					data = await self._recv(msg_len,MIN_SOCK_TO)
 					if data :
 						await self._handle_hw(data)
+				elif msg_type == MSG_INTERNAL :
+					await self._recv(msg_len,MIN_SOCK_TO)
 				else :
-					print('close: unknown message type {} , ignoring'.format(msg_type))
-					continue
+					await self._close('unknown message type')
 			else :
 				await core.wait(1)
 

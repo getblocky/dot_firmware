@@ -1,0 +1,416 @@
+#version=1.0
+#hash = 1123
+import sys
+core = sys.modules['Blocky.Core']
+
+from micropython import const
+from time import ticks_ms , ticks_diff
+
+viettel  = {"apn" : "v-internet" , "user":"","pwd":"","dns":"203.113.131.1"} # codelab make this
+
+class SIM800 :
+	def __init__(self,port , setting = {},debug = False):
+		self.port = port
+		self.p = core.getPort(self.port)
+		self.debug = debug
+		self.setting = setting
+		self.connected = False
+		# this is something todo
+		# choosing an unused port
+		try :
+			a = core.dict['uart']
+			port = core.dict['uart'].index(None)
+		except KeyError:
+			core.dict['uart'] = ['repl' , None , None]
+			port = 1
+			core.dict['uart'][port] = self
+
+		except ValueError:
+			return # not enough port
+
+		ext = core.eeprom.get('EXT_SOCKET')
+		if ext != True :
+			core.eeprom.set('EXT_SOCKET',True)
+			core.machine.reset()
+
+		else :
+			print('Connecting to the Internet via SIM800 Module')
+
+		self.uart = core.machine.UART(port,rx=self.p[0],tx=self.p[1],baudrate=9600)
+		# todo , higher baudrate
+
+		self.buffer = b''
+		self.echo = b''
+		self.running = False
+		self.polling = False
+
+		self._liEvent = {}
+		self._liRequest = None
+		self._liCommand = None
+		self._string = b'' #debug only
+		self.belonged = False
+		self._liSocket = [None for _ in range(6)]
+
+		self.connected = False
+
+		# method
+		self.AF_INET				= const(2)
+		self.AF_INET6			= const(10)
+		self.IPPROTO_IP			= const(0)
+		self.IPPROTO_TCP			= const(6)
+		self.IPPROTO_UDP			= const(17)
+		self.IP_ADD_MEMBERSHIP	= const(3)
+		self.SOCK_DGRAM			= const(2)
+		self.SOCK_RAW			= const(3)
+		self.SOCK_STREAM			= const(1)
+		self.SOL_SOCKET			= const(4095)
+		self.SO_REUSEADDR		= const(4)
+
+		core.mainthread.create_task(self.connect())
+		core.mainthread.create_task(self._routine())
+
+	def __repr__(self):
+		print('running=' , self.running , "polling = " , self.polling)
+		print('[event] ' , self._liEvent)
+		print('[request] ' , self._liRequest)
+		print('[command] ' , self._liCommand)
+		print('[buffer]' , self.buffer)
+
+	def isconnected(self):
+		return self.connected
+
+	def to_bytes (self,data):
+		if isinstance(data,bytearray):
+			return bytes(data)
+		elif isinstance(data,str):
+			return bytes(data,'utf-8')
+		elif isinstance(data,bytes) or isinstance(data,int):
+			return data
+
+	async def _routine(self):
+		while True:
+			await core.asyncio.sleep_ms(100)
+			if self.polling == False and self.uart.any():
+				while self.uart.any() > 0:
+					self.buffer += self.uart.read()
+					await core.asyncio.sleep_ms(1)
+				self.parsing()
+
+	async def request(self,data,prefix=None,timeout=5000):
+		while self.running == True:
+			await core.asyncio.sleep_ms(10)
+		self.running = True
+
+		data = self.to_bytes(data)
+
+		if prefix == None :
+			prefix = b''
+			for x in range(len(data)):
+				if data[x:x+1] in [b' ',b'+',b','] or data[x:x+1].isalpha() or data[x:x+1].isdigit() :
+					prefix += data[x:x+1]
+		elif isinstance(prefix , str)or isinstance(prefix,bytearray):
+			prefix = self.to_bytes(prefix)
+		self._liRequest = prefix
+		print ('>>> prefix = ' , self._liRequest)
+		start_time = ticks_ms()
+		await self.write((b'AT' if data.startswith(b'+') else b'')+data+(b'\r\n' if data.startswith(b'+') else b''))
+		self.polling = True
+		while self._liRequest == prefix :
+			self.parsing()
+			if self.uart.any() == 0 and len(self.buffer):
+				await core.asyncio.sleep_ms(10)
+				self.parsing()
+			if self.uart.any() > 0 :
+				self.buffer += self.uart.read()
+				await core.asyncio.sleep_ms(10)
+			if ticks_diff(ticks_ms(),start_time)>timeout :
+				self.running = False
+				self.polling = False
+				raise OSError # timeout
+
+		self.running = False
+		self.polling = False
+
+		if self.debug :
+			print('[request] {} == {}'.format(prefix,self._liRequest))
+
+		return self._liRequest
+
+	async def waitfor(self,data,timeout=10000):
+		data = self.to_bytes(data)
+		self._liEvent[data] = None
+		start_time = ticks_ms()
+		while self._liEvent[data] == None :
+			await core.asyncio.sleep_ms(50)
+			if ticks_diff(ticks_ms(),start_time) > timeout :
+				self._liEvent.pop(data)
+				raise OSError # timeout
+
+		if self.debug :
+			print('[event] {} == {}'.format(data,self._liEvent[data]))
+
+		return self._liEvent.pop(data)
+
+	async def command(self,data,response=[b'OK',b'ERROR'],timeout = 10000):
+		while self.running == True :
+			await core.asyncio.sleep_ms(50)
+		self.running = True
+		data = self.to_bytes(data)
+		self._liCommand = response
+		for x in range(len(self._liCommand)):
+			self._liCommand[x] = self.to_bytes(self._liCommand[x])
+
+		await self.write((b'AT' if data.startswith(b'+') else b'')+data+(b'\r\n' if data.startswith(b'+') else b''))
+		self.polling = True
+		start_time = ticks_ms()
+		while not isinstance(self._liCommand,int):
+			self.parsing()
+			if self.uart.any() == 0 :
+				await core.asyncio.sleep_ms(50)
+				if ticks_diff(ticks_ms(),start_time) > timeout :
+					self.running = False
+					self.polling = False
+					raise OSError # timeout
+			if self.uart.any() > 0 :
+				self.buffer += self.uart.read()
+				await core.asyncio.sleep_ms(1)
+			self.parsing()
+
+		self.polling = False
+		self.running = False
+		if self.debug :
+			print('[command] {} == {}'.format(data,self._liCommand))
+
+		return self._liCommand
+
+	async def write(self,data):
+		if self.uart.any() > 0 :
+			self.buffer += self.uart.read()
+		if len(self.buffer):
+			self.parsing()
+		else :
+			self.uart.write(data)
+			if self.debug :
+				print('[write] {}'.format(data))
+
+	# @# OPTIMIZE:
+	def parsing (self):
+		if self.debug and len(self.buffer) > 0:
+			print('[parsing] {}'.format(self.buffer))
+
+
+		while len(self.buffer) > 0 :
+			# check for no escape string
+			if self.buffer.count(b'\r') + self.buffer.count(b'\n') == 0 :
+				string = self.buffer
+				self.buffer = b''
+
+			# check for null string
+			elif len(self.buffer) <= 2 and len(self.buffer.strip()) == 0:
+				self.buffer = b''
+				return
+
+			# normally parsing , cutting string
+			else :
+				start = max((self.buffer.find(b'\r'),self.buffer.find(b'\n')))
+				stop = max((self.buffer.find(b'\r',1),self.buffer.find(b'\n',1)))
+
+				if start == 0 : #\n data
+					if stop == -1:
+						string = self.buffer
+						self.buffer = b''
+					else :
+						string = self.buffer[1:stop]
+						self.buffer = self.buffer[stop:]
+				else :
+					string = self.buffer[:stop]
+					self.buffer = self.buffer[stop:]
+
+			if self.debug :
+				print('[string] {}'.format(string),end='\t')
+
+			self.belonged = False
+			# event parsing ( _jEvent_ )
+			self._jEvent_ (string)
+			# command parsing ( _jCommand_ )
+			self._jCommand_(string)
+			# request parsing ( _jRequest_ )
+			self._jRequest_(string)
+
+			if self.belonged == False:
+				if self.debug :
+					print('[unknown] {}'.format(string))
+
+	def _jEvent_(self,data):
+		if self.belonged:
+			return
+		data = data.lstrip()
+		for key in self._liEvent.keys():
+			if data.find(key) > -1:
+				self.belonged = True
+				print('>>>' , data , key , self._liEvent)
+				if data == key :
+					self._liEvent[key] = True
+				else :
+					if data.find(b': ') > -1 :
+						data = data.split(b': ')[1].split(b',')
+						for x in range(len(data)):
+							try :
+								data[x] = int(data[x])
+							except ValueError:
+								pass
+						self._liEvent[key] = data
+
+	def _jCommand_(self,data):
+		if self.belonged :
+			return
+		data = data.lstrip()
+		if isinstance(self._liCommand,list) and data in self._liCommand:
+			if self.debug :
+				print('[jCommand] data = {} == {} in "{}"'.format(data , self._liCommand.index(data), self._liCommand))
+
+			self._liCommand = self._liCommand.index(data)
+			self.belonged = True
+
+	def _jRequest_(self,data):
+		if self.belonged:
+			return
+		data = data.lstrip()
+		if self._liRequest == None :
+			return
+		elif isinstance(self._liRequest,bytes) and self._liRequest.startswith(b'*'):
+			# todo , what if event occur here ??
+			if self._liRequest == b'*':
+				self._liRequest = [data]
+			else :
+				self._liRequest = self._liRequest[1:]
+			self.belonged = True
+		elif isinstance(self._liRequest,bytes) and not self._liRequest.startswith(b'*'):
+			if data.startswith(self._liRequest):
+				data = data[len(self._liRequest):]
+				data = data.split(b':')[-1].split(b',')
+				for x in range(len(data)):
+					try :
+						data[x] = int(data[x])
+					except ValueError:
+						pass
+				self.belonged = True
+				self._liRequest = data
+		elif isinstance(self._liRequest,int):
+			length = self._liRequest
+			self._liRequest = data[0:min(len(data),self._liRequest)]
+			if len(self._liRequest) < length:
+				missing = length - len(self._liRequest)
+				self._liRequest += self.buffer[0:missing]
+				self.buffer = self.buffer[missing:]
+
+	async def connect (self):
+		self.uart.write('ATE0\r\n')
+		await core.asyncio.sleep_ms(10)
+		self.uart.read()
+
+		r = await self.request('+CSQ')
+		print('[SIM800] Signal Quality = {}'.format(r))
+
+
+
+		r = await self.request('+CFUN?')
+		if r[0] != 1 :
+			r = await self.command('+CFUN=1')
+			if r != 0:
+				return False
+		r = await self.request('+CGATT?')
+		if r[0] != 1 :
+			r = await self.command('+CGATT=1')
+			if r != 0 :
+				return False
+
+		await self.command('+SAPBR=3,1,"Contype","GPRS"')
+		await self.command('+SAPBR=3,1,"APN","{apn}"'.format(apn=self.setting['apn']))
+		await self.command('+SAPBR=3,1,"USER","{user}"'.format(user=self.setting['user']))
+		await self.command('+SAPBR=3,1,"PWD","{pwd}"'.format(pwd=self.setting['pwd']))
+		await self.command('+CGDCONT=1,"IP","{apn}"'.format(apn=self.setting['apn']))
+		await self.command('+CGACT=1,1',timeout = 10000)
+		await self.command('+SAPBR=1,1',timeout = 5000)
+		await self.request('+SAPBR=2,1',prefix = b'+SAPBR:',timeout = 5000)
+		await self.command('+CGATT=1')
+		await self.command('+CIPMUX=1')
+		await self.command('+CIPQSEND=1')
+		await self.command('+CIPRXGET=1')
+		await self.command('+CSTT="{apn}"'.format(apn = self.setting['apn']))
+		await self.command('+CIICR')
+		await self.request('+CIFSR',prefix = b'*')
+		await self.command('+CDNSCFG="{dns}"'.format(dns = self.setting['dns']))
+
+		self.connected = True
+		core.ext_socket = self
+
+	def socket(self , af = 2 , type = 1 , proto = 6 ):
+		class socket :
+			def __init__(self,super,mode = 0):
+				self.super = super
+				self.id = self.super._liSocket.index(None)
+				self.super._liSocket[self.id] = self
+				self.sockMode = mode
+				self.timeout = 0 # dummy
+				self.buffer = b''
+				self.connected = False
+			async def settimeout (self,timeout):
+				return
+
+			async def close(self):
+				r = await self.super.command('+CIPCLOSE={},0'.format(self.id),response = [bytes(str(self.id),'utf-8') + b', ' + x for x in [b'CLOSE OK',b'ERROR']])
+				if r == 0 :
+					self.super._liSocket[self.id] = None
+					self.connected = False
+				else :
+					print("[SIM800] Can't close socket {}".format(self.id))
+
+				return r == 0
+
+			async def connect(self ,addr):
+				while self.super.connected == False :
+					await core.asyncio.sleep_ms(1000)
+				await self.super.command('+CIICR')
+				await self.super.request('+CIFSR',prefix=b'*')
+				r = await self.super.command('+CIPSTART={id},"{mode}","{addr}",{port}'.format(id = self.id,mode = "UDP" if self.sockMode == self.super.SOCK_DGRAM else "TCP",addr = addr[0],port = addr[1]),response = [bytes(str(self.id),'utf-8') + b', ' + x for x in [b'CONNECT OK',b'ALREADY CONNECT',b'CONNECT FAIL'] ],timeout = 15000)
+				if r != 2 :
+					self.connected = True
+				return False if r == 2 else True
+
+			async def recv(self,length,timeout = 5000):
+				# differently implemented
+				while not self.connected:
+					await core.asyncio.sleep_ms(300)
+				try :
+					available = await self.super.request('+CIPRXGET=4,{id}'.format(id=self.id), prefix = b'+CIPRXGET: 4,{id},'.format(id = self.id))
+					if available[0] == 0 :
+						await self.super.waitfor('+CIPRXGET: 1,{id}'.format(id=self.id))
+						available = await self.super.request('+CIPRXGET=4,{id}'.format(id=self.id), prefix = b'+CIPRXGET: 4,{id},'.format(id = self.id))
+					available = available[0]
+					data = await self.super.request('+CIPRXGET=2,{id},{length}'.format(id=self.id,length=available),prefix= 19 + len(str(available)) + available)
+					data = data[-available:]
+					if self.super.debug :
+						print('[recv] [{}] == {}'.format(len(data), data))
+					return data
+
+				except OSError : # mostly timeout
+					raise OSError(errno.EAGAIN)
+
+
+			async def sendto(self,data,addr):
+				await self.connect(addr)
+				await self.write(data)
+
+			async def send ( self , data , length = None):
+				await self.write(data ,length)
+
+			async def write(self,data,length=None):
+				while not self.connected:
+					await core.asyncio.sleep_ms(300)
+				await self.super.command('+CIPSEND={id},{length}'.format(id=self.id,length = length or len(data)),response = [b'> '])
+				data = self.super.to_bytes(data)
+				await self.super.request(data,prefix=b'DATA ACCEPT:{},'.format(self.id))
+
+		_socket_ = socket(self,type)
+		return _socket_

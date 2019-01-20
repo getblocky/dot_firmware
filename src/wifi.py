@@ -5,13 +5,16 @@ core = sys.modules['Blocky.Core']
 wlan_sta  = core.network.WLAN(core.network.STA_IF)
 
 async def connect(ap=None):
+	if core.eeprom.get('EXT_SOCKET') == True :
+		print('wifi.py ->  exit ')
+		return
 	print('[WIFI] -> Connecting')
 	await core.indicator.show('wifi-connecting')
 	wlan_sta.active(True)
 	if ap == None :
 		while not wlan_sta.isconnected() :
 			await core.wait(100)
-			
+
 	else :
 		while not wlan_sta.isconnected():
 			l = []

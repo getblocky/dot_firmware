@@ -1,10 +1,13 @@
 #version=1.0
 # All public variable across the system to avoid duplicate import
+import os , json
 prescript  = "import sys\ncore=sys.modules['Blocky.Core']\n"
+import Blocky.EEPROM
+eeprom = Blocky.EEPROM.EEPROM('eeprom')
 rtc = False
-asyncio = None 
-asyn = None 
-flag = None 
+asyncio = None
+asyn = None
+flag = None
 mqtt = None
 BootMode = None
 indicator = None
@@ -17,47 +20,38 @@ wdt_timer = None
 wifi_list  = {}
 ext_socket = None
 user_code = None
-version = [1.0,'Nidalee Build']
+version = [2.0,'Nidalee Build']
 dict = {}
-import time,machine,neopixel,binascii,json,ure,gc,hashlib,network,sys
-import micropython,socket,struct,_thread,urequests,random,os
+import time,machine,neopixel,binascii,ure,gc,hashlib,network,sys
+import micropython,socket,struct,_thread,random
+import urequests
 import Blocky.Global as flag
 import Blocky.asyn as asyn
 import Blocky.Timer as Timer
 from Blocky.Indicator import indicator
 from Blocky.Pin import getPort
-import Blocky.EEPROM
-eeprom = Blocky.EEPROM.EEPROM('eeprom')
+
 cfn_btn = machine.Pin(12 , machine.Pin.IN , machine.Pin.PULL_UP)
 import Blocky.uasyncio as asyncio
 mainthread = asyncio.get_event_loop()
 wifi = None # Wifi class started in Main
 TimerInfo = [time.ticks_ms() , time.ticks_ms() , None , None]
-
-# This will run at OTA events 
-
+hardware = {"uart" : ['repl',None,None],"spi" : ['flash',None,None]}
 async def cleanup():
 	print('[CLEANER] -? START')
-	pin = [25,26,27,14,13,15,4,16,32,17,33,18,23,19,22,21]
-	# Clear all hardware that require to be deinit
 	global deinit_list , alarm_list
 	for x in deinit_list:
 		try :
+			print('deinit' , x)
 			x.deinit()
 		except:
 			pass
-	deinit_list = []	#refresh the list 
+	deinit_list = []	#refresh the list
 	alarm_list = [] #delete all alarm stuff
-	# Reset all hardware to it initial state
-	# Timer must be deinit by deinit_list
-	for x in pin:
-		machine.PWM(machine.Pin(x)).deinit()
-		machine.Pin(x,machine.Pin.IN)
-	
 	for x in asyn.NamedTask.instances :
 		if x.startswith('user'):
 			await asyn.NamedTask.cancel(x)
-	
+
 	a=False
 	while a == False :
 		a = True
@@ -66,10 +60,10 @@ async def cleanup():
 				a = False
 				break
 		if a == True :
-			break 
+			break
 		await asyncio.sleep_ms(10)
 	print('[CLEANER] -? DONE')
-		
+
 async def call_once(name,function):
 	print('[CALLING] {} -> {}'.format(name,function))
 	try :
@@ -105,7 +99,7 @@ def download(filename , path):
 				response = None
 				gc.collect()
 				try :
-					response = urequests.get('https://raw.githubusercontent.com/getblocky/dot_firmware/master/ota/{}_${}.{}'.format(filename.split('.')[0] , piece , filename.split('.')[1]))   
+					response =  urequests.get('https://raw.githubusercontent.com/getblocky/dot_firmware/master/ota/{}_${}.{}'.format(filename.split('.')[0] , piece , filename.split('.')[1]))
 					if response.status_code == 200 :
 						f.write(response.content)
 						print('#' , end = '')
@@ -115,17 +109,17 @@ def download(filename , path):
 					print('Pieces = ' , piece)
 					f.close()
 					os.rename('temp.py' , path)
-					break 
+					break
 		else :
 			print('[Download] Failed . Library ' , filename , 'not found on server')
 	except Exception as err:
 		import sys
 		sys.print_exception(err)
 		print('Failed')
-	
+
 	del response
 	gc.collect()
-	
+
 def get_list_library(file):
 	f = open(file)
 	cell = ''
@@ -146,7 +140,7 @@ def get_list_library(file):
 			r.append([library,version])
 	f.close()
 	return r
-	
+
 def get_library_version(lib):
 	if '{}.py'.format(lib) not in os.listdir('Blocky'):
 		return None
@@ -163,27 +157,27 @@ def get_library_version(lib):
 		return 0.0
 	f.close()
 	return float(line.split('=')[1])
-	
+
 """
 	Patch function , do not use await core.asyncio.sleep_ms(time) with time > 5s , this will block OTA process
 	since it need to wait for the _sleep_ms task to be done.
-	
+
 	core.asyncio.sleep_ms(time)  ->  core.wait(time)  #ms
 """
 async def wait ( time ):
 	for x in range( time//500):
 		await asyncio.sleep_ms(500)
 	await asyncio.sleep_ms(time % 500)
-	
+
 _failsafe = None
 def _failsafeActive(state):
 	if state == True :
 		try :
-			core.wdt_timer.init(mode=core.machine.Timer.PERIODIC,period=20000,callback = _failsafe)
+			wdt_timer.init(mode=machine.Timer.PERIODIC,period=20000,callback = _failsafe)
 		except :
 			pass
 	if state == False :
 		try :
-			core.wdt_timer.deinit()
+			wdt_timer.deinit()
 		except :
 			pass

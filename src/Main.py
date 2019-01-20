@@ -16,9 +16,14 @@ if 'config.json' not in core.os.listdir():
 try :
 	core.wdt_timer = core.machine.Timer(1)
 except :
-	pass	
+	pass
 
 def _failsafe(source):
+	if core.Timer.runtime() > 60000 and core.eeprom.get('EXT_SOCKET') == True and core.ext_socket == None :
+		core.eeprom.set('EXT_SOCKET',False)
+		core.os.rename('user_code.py','temp.py')
+		open('last_word.py','w').write('[HARDWARE] socket not found')
+		core.machine.reset()
 	if core.Timer.runtime() - core.blynk.last_call > 20000 :
 		if core.eeprom.get('EXT_SOCKET') == True :
 			return
@@ -26,7 +31,7 @@ def _failsafe(source):
 			if not core.wifi.wlan_sta.isconnected():
 				print('[failsafe] -> wifi is so bad')
 				return
-				
+
 		if not core.flag.direct_command:
 			import os , machine,time
 			print('[failsafe] -> removing user code')
@@ -43,6 +48,11 @@ def _failsafe(source):
 		f = open('last_word.py','w')
 		f.write('[DOT_ERROR] BLOCKING_CMD')
 		f.close()
+		for x in core.deinit_list:
+			try :
+				x.deinit()
+			except :
+				pass
 		core.machine.reset()
 core._failsafe = _failsafe
 
@@ -50,8 +60,9 @@ async def run_user_code(direct = False):
 	"""
 		Pending library that need to be download will be downloaded first , it will yield back
 	"""
+	print('run user code = True')
 	if direct == False and core.eeprom.get('LIB') != None :
-		return 
+		return
 	if core.os.stat('user_code.py')[6] == 0 :
 		while not core.flag.blynk :
 			await core.wait(500)
@@ -60,10 +71,10 @@ async def run_user_code(direct = False):
 	else :
 		await core.indicator.show(None)
 	core._failsafeActive(False)
-	
-	""" 
+
+	"""
 		By defaults , the system will run user code and connecting at the same time
-		Sometimes , these two task yield RuntimeError 
+		Sometimes , these two task yield RuntimeError
 		Which will kill user code , wait for the network to connect and then re-run user_code
 	"""
 	if direct == True :
@@ -72,8 +83,8 @@ async def run_user_code(direct = False):
 		core.user_code = __import__('user_code')
 		core.gc.collect()
 		await core.blynk.log('[HEAP] {}'.format(core.gc.mem_free())  )
-		return 
-		
+		return
+
 	list_library = core.get_list_library('user_code.py')
 	list_library_update = []
 	for x in list_library:
@@ -84,7 +95,7 @@ async def run_user_code(direct = False):
 			print(False)
 		else :
 			print(True)
-			
+
 	if len(list_library_update):
 		core.eeprom.set('LIB',list_library_update)
 		core.machine.reset()
@@ -119,8 +130,13 @@ async def run_user_code(direct = False):
 			for x in range(20):
 				core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write();core.time.sleep_ms(50)
 				core.indicator.rgb.fill((0,0,0));core.indicator.rgb.write();core.time.sleep_ms(50)
+		for x in core.deinit_list:
+			try:
+				x.deinit()
+			except:
+				pass
 		core.machine.reset()
-	
+
 async def send_last_word():
 
 
@@ -158,23 +174,25 @@ async def main(online=False):
 			await bootmode.Start()
 		if time > 3 and time < 6 :
 			core.os.remove('user_code.py')
+			core.os.remove('eeprom')
 		if time > 6 :
 			core.os.remove('user_code.py')
 			core.os.remove('config.json')
+			core.os.remove('eeprom')
 			try :
 				core.os.remove('Blocky/fuse.py')
 			except:
 				pass
 		core.machine.reset()
-	
-	# 
+
+	#
 	try :
 		core.config = core.json.loads(open('config.json').read())
 		if not all(elem in list(core.config.keys()) for elem in ['token','known_networks']):
 			raise Exception
 		if len(core.config['token']) == 0 or len(core.config['known_networks'])==0:
 			raise Exception
-			
+
 	except Exception as err:
 		core.sys.print_exception(err)
 		print('[config] -> error , init bootmode')
@@ -182,50 +200,34 @@ async def main(online=False):
 		bootmode = BootMode()
 		await bootmode.Start()
 		core.machine.reset()
-		
-	# when in Offline mode , press config to be back online
-	if core.eeprom.get('OFFLINE') == True  :
-		def back_online(s):
-			core.mainthread.call_soon(main(True))
-			core.cfn_btn.irq(trigger=0)
-		core.cfn_btn.irq(trigger = core.machine.Pin.IRQ_FALLING , handler = back_online)
-		print('running offline mode ! press config to be back online')
-		if core.eeprom.get('EXT_SOCKET') == True :
-			print('[OFFLINE MODE] -> running blynk , timer and other service')
-			core.blynk = Blynk(core.config['token'],ota = run_user_code)
-			core.mainthread.create_task(send_last_word())
-			core.mainthread.create_task(core.Timer.alarm_service())
-		print('[OFFLINE MODE] -> initialize user_code')
-		core.user_code = __import__('user_code')
-		
-		return
-	
-	
-	print('[wifi] -> connecting')
+
+
 	core.wifi = __import__('Blocky/wifi')
 	from Blocky.BlynkLib import Blynk
-	core.blynk = Blynk(core.config['token'],ota = run_user_code)
-	core.mainthread.create_task(send_last_word())
+
+	print('[main] connecting via external device')
 	core.mainthread.create_task(run_user_code())
+	core.mainthread.create_task(send_last_word())
 	core.mainthread.create_task(core.Timer.alarm_service())
+
+	core.blynk = Blynk(core.config['token'],ota = run_user_code)
+
+	# await for network , then download new file
 	while True :
-		await core.asyncio.sleep_ms(500)
-		if not core.wifi.wlan_sta.isconnected():
-			print('[wifi] -> connecting back',end='')
-			await core.wifi.connect(core.config['known_networks'])
-			print('OK')
-			if core.eeprom.get('LIB')!= None:
-				print('[library] -> downloading list {}'.format(core.eeprom.get('LIB')))
-				for x in core.eeprom.get('LIB'):
-					core.download(x+'.py','Blocky/{}.py'.format(x))
-				core.eeprom.set('LIB',None)
-				core.mainthread.create_task(run_user_code(True))
-			print('[blynk] -> connecting back')
-			core.mainthread.create_task(core.blynk.run())
-			while not core.flag.blynk:
-				await core.asyncio.sleep_ms(500)
-			print('You are back online :) Happy Blynking')
-			core.blynk.log('[DOT_ONLINE]\t{}\t{}\t{}'.format(core.Timer.current('clock'),core.wifi_list,core.wifi.wlan_sta.config('essid')))
+		if core.eeprom.get('EXT_SOCKET') == True : # running on external device
+			# await network object to be loaded
+			while core.ext_socket == None :
+				await core.asyncio.sleep_ms(200)
+			# await that network connection
+			while not core.ext_socket.isconnected() :
+				await core.asyncio.sleep_ms(200)
+
+
+		else : # running on wifi
+			if not core.wifi.wlan_sta.isconnected():
+				print('[wifi] connecting back')
+				await core.wifi.connect(core.config['known_networks'])
+
 		if core.flag.blynk == False :
 			print('[blynk] -> connecting back now')
 			core.mainthread.create_task(core.blynk.run())
@@ -233,6 +235,19 @@ async def main(online=False):
 				await core.asyncio.sleep_ms(500)
 			print('[blynk] -> back online')
 
+		if core.eeprom.get('LIB') != None:
+			print('[library] downloading {}'.format(core.eeprom.get('LIB')))
+			for x in core.eeprom.get('LIB'):
+				core.download(x+'.py','Blocky/{}.py'.format(x))
+			core.eeprom.set('LIB',None)
+			core.mainthread.create_task(run_user_code(True))
+
+		while not core.flag.blynk:
+			await core.asyncio.sleep_ms(500)
+		print('You are back online :) Happy Blynking')
+		core.blynk.log('[DOT_ONLINE]\t{}\t{}\t{}'.format(core.Timer.current('clock'),core.wifi_list,core.wifi.wlan_sta.config('essid')))
+		while core.flag.blynk :
+			await core.asyncio.sleep_ms(1000)
 def wrapper():
 	while True :
 		try :
@@ -243,6 +258,11 @@ def wrapper():
 				f.write('[DOT_ERROR] {}'.format(str(err)))
 				f.close()
 				core.os.rename('user_code.py', 'temp_code.py')
+			for x in core.deinit_list:
+				try :
+					x.deinit()
+				except :
+					pass
 			core.machine.reset()
 		except Exception as err :
 			core.sys.print_exception(err)
@@ -253,9 +273,3 @@ core.blynk = None
 core.mainthread.create_task(main())
 wrapper()
 #core._thread.start_new_thread(wrapper,())
-			
-	
-	
-		
-			
-	
