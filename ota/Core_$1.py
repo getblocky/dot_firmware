@@ -1,4 +1,4 @@
-, time.ticks_ms() , None , None]
+ , time.ticks_ms() , None , None]
 hardware = {"uart" : ['repl',None,None],"spi" : ['flash',None,None]}
 async def cleanup():
 	print('[CLEANER] -? START')
@@ -36,4 +36,4 @@ async def call_once(name,function):
 				while asyn.NamedTask.is_running (name):
 					await asyncio.sleep_ms(10)
 	except Exception as err:
-		del asyn.NamedTask.inst
+		del asyn.NamedTask.ins

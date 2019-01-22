@@ -1,4 +1,5 @@
 #version=2.0
+
 # All public variable across the system to avoid duplicate import
 import os , json
 prescript  = "import sys\ncore=sys.modules['Blocky.Core']\n"

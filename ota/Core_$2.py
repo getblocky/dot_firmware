@@ -1,4 +1,4 @@
-ances[name]
+tances[name]
 	#mainthread.call_soon(asyn.NamedTask(name,function))
 
 	if function != None :
@@ -27,4 +27,4 @@ def download(filename , path):
 				try :
 					response =  urequests.get('https://raw.githubusercontent.com/getblocky/dot_firmware/master/ota/{}_${}.{}'.format(filename.split('.')[0] , piece , filename.split('.')[1]))
 					if response.status_code == 200 :
-						
+					

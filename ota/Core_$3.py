@@ -1,4 +1,4 @@
-f.write(response.content)
+	f.write(response.content)
 						print('#' , end = '')
 					else :
 						raise Exception
@@ -43,4 +43,4 @@ def get_library_version(lib):
 	if '{}.py'.format(lib) not in os.listdir('Blocky'):
 		return None
 	line = ''
-	f = open('Blocky/{}.p
+	f = open('Blocky/{}.
