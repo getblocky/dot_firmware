@@ -72,9 +72,10 @@ async def call_once(name,function):
 				await asyn.NamedTask.cancel ( name )
 				while asyn.NamedTask.is_running (name):
 					await asyncio.sleep_ms(10)
-	except :
-		pass
+	except Exception as err:
+		del asyn.NamedTask.instances[name]
 	#mainthread.call_soon(asyn.NamedTask(name,function))
+
 	if function != None :
 		print('[CALLING] {} -> {}  DONE '.format(name,function))
 		mainthread.call_soon( asyn.NamedTask(name,function) ())
@@ -136,6 +137,7 @@ def get_list_library(file):
 		if line.startswith('from '):
 			library = line.split('.')[1].split(' ')[0]
 			if '#version' in line :
+				print('line',line,line.split('=')[1])
 				version = float(line.split('=')[1])
 			r.append([library,version])
 	f.close()

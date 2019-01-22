@@ -1,4 +1,5 @@
- = '')
+f.write(response.content)
+						print('#' , end = '')
 					else :
 						raise Exception
 				except Exception :
@@ -32,6 +33,7 @@ def get_list_library(file):
 		if line.startswith('from '):
 			library = line.split('.')[1].split(' ')[0]
 			if '#version' in line :
+				print('line',line,line.split('=')[1])
 				version = float(line.split('=')[1])
 			r.append([library,version])
 	f.close()
@@ -41,7 +43,4 @@ def get_library_version(lib):
 	if '{}.py'.format(lib) not in os.listdir('Blocky'):
 		return None
 	line = ''
-	f = open('Blocky/{}.py'.format(lib))
-	while True :
-		temp = f.read(1)
-		if len(temp) == 0 or temp == '\n' or t
+	f = open('Blocky/{}.p

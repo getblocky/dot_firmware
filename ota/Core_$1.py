@@ -35,6 +35,5 @@ async def call_once(name,function):
 				await asyn.NamedTask.cancel ( name )
 				while asyn.NamedTask.is_running (name):
 					await asyncio.sleep_ms(10)
-	except :
-		pass
-	#mainthread.call_soon(asyn.NamedT
+	except Exception as err:
+		del asyn.NamedTask.inst

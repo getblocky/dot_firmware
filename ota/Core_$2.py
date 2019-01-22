@@ -1,4 +1,6 @@
-ask(name,function))
+ances[name]
+	#mainthread.call_soon(asyn.NamedTask(name,function))
+
 	if function != None :
 		print('[CALLING] {} -> {}  DONE '.format(name,function))
 		mainthread.call_soon( asyn.NamedTask(name,function) ())
@@ -25,5 +27,4 @@ def download(filename , path):
 				try :
 					response =  urequests.get('https://raw.githubusercontent.com/getblocky/dot_firmware/master/ota/{}_${}.{}'.format(filename.split('.')[0] , piece , filename.split('.')[1]))
 					if response.status_code == 200 :
-						f.write(response.content)
-						print('#' , end
+						
