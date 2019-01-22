@@ -1,10 +1,13 @@
 #version=1.0
 # All public variable across the system to avoid duplicate import
+import os , json
 prescript  = "import sys\ncore=sys.modules['Blocky.Core']\n"
+import Blocky.EEPROM
+eeprom = Blocky.EEPROM.EEPROM('eeprom')
 rtc = False
-asyncio = None 
-asyn = None 
-flag = None 
+asyncio = None
+asyn = None
+flag = None
 mqtt = None
 BootMode = None
 indicator = None
@@ -17,61 +20,19 @@ wdt_timer = None
 wifi_list  = {}
 ext_socket = None
 user_code = None
-version = [1.0,'Nidalee Build']
+version = [2.0,'Nidalee Build']
 dict = {}
-import time,machine,neopixel,binascii,json,ure,gc,hashlib,network,sys
-import micropython,socket,struct,_thread,urequests,random,os
+import time,machine,neopixel,binascii,ure,gc,hashlib,network,sys
+import micropython,socket,struct,_thread,random
+import urequests
 import Blocky.Global as flag
 import Blocky.asyn as asyn
 import Blocky.Timer as Timer
 from Blocky.Indicator import indicator
 from Blocky.Pin import getPort
-import Blocky.EEPROM
-eeprom = Blocky.EEPROM.EEPROM('eeprom')
+
 cfn_btn = machine.Pin(12 , machine.Pin.IN , machine.Pin.PULL_UP)
 import Blocky.uasyncio as asyncio
 mainthread = asyncio.get_event_loop()
 wifi = None # Wifi class started in Main
-TimerInfo = [time.ticks_ms() , time.ticks_ms() , None , None]
-
-# This will run at OTA events 
-
-async def cleanup():
-	print('[CLEANER] -? START')
-	pin = [25,26,27,14,13,15,4,16,32,17,33,18,23,19,22,21]
-	# Clear all hardware that require to be deinit
-	global deinit_list , alarm_list
-	for x in deinit_list:
-		try :
-			x.deinit()
-		except:
-			pass
-	deinit_list = []	#refresh the list 
-	alarm_list = [] #delete all alarm stuff
-	# Reset all hardware to it initial state
-	# Timer must be deinit by deinit_list
-	for x in pin:
-		machine.PWM(machine.Pin(x)).deinit()
-		machine.Pin(x,machine.Pin.IN)
-	
-	for x in asyn.NamedTask.instances :
-		if x.startswith('user'):
-			await asyn.NamedTask.cancel(x)
-	
-	a=False
-	while a == False :
-		a = True
-		for x in asyn.NamedTask.instances:
-			if x.startswith('user'):
-				a = False
-				break
-		if a == True :
-			break 
-		await asyncio.sleep_ms(10)
-	print('[CLEANER] -? DONE')
-		
-async def call_once(name,function):
-	print('[CALLING] {} -> {}'.format(name,function))
-	try :
-		if name in asyn.NamedTask.instances:
-		
+TimerInfo = [time.ticks_ms() 

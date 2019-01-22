@@ -391,7 +391,6 @@ class Blynk:
 			self.last_call = core.Timer.runtime()
 			try :
 				data = await self._recv(HDR_LEN,NON_BLK_SOCK)
-				print('>>> received something' , data)
 			except:
 				pass
 			if data:

@@ -1,88 +1,46 @@
-from machine import UART
+from machine import UART,Pin
 from time import *
-from _thread import *
+from _thread import start_new_thread
 import Blocky.uasyncio as asyncio
 mainthread = asyncio.get_event_loop()
-import gc , sys , os , re
+import gc,re,sys,os
+from neopixel import NeoPixel
+REQUEST = 1
+COMMAND = 2
+EVENT   = 3
+PARSE   = 4
 
-"""
-	This library implement SIM800 core functionality that is relevant to Blocky Platform
-	Since this module is not very responsive , the libray is mostly written in asyncio
-	Feature :
-		+ create seperated socket (0-5) , each socket will have
-			+ getaddrinfo(host,port) , this is a dummy one for compatibility reason
-			+ connect(host,port) or (getaddrinfo[0][-1])
-			+ send(buffer)
-			+ recv(length)
-			+ settimeout(time)
-			+ setsockopt(mode,callback)
-			+ close()
-			+ sendto()
-			
-		+ gsm :
-			+ send , receive message
-			+ read saved SMS , draft ... have no use -> NotImplementedError
-			+ calling , hangup is not written
-			+ getOperator()
-			+ getSignalQuality()
-			+ getGSMLocation()
-			+ getSIMIMEE()
-			+ unlockSIM(pin)
-			
-			
-		+ TCP Server is not implemented . and will not be due to its limitation
-		
-			
+n = NeoPixel(Pin(5),12,timing=True)
+def state(num,s):
+	n.fill((0,0,0))
+	n[num] = (5,5,5) if s == 1 else  (0,0,0)
+	n.write()
 
-"""
+sleep_ms(2000)
 
-class lStr :
+class SIM800:
 	def __init__(self):
-		self.buf = b''
-		
-	def __add__ (self,other):
-		pass
-	def __getitem__(self,key):
-		pass
-	def __delitem__(self,key):
-		pass
-	def __setitem__(self,key):
-		pass
-	def __contains__(self,item):
-		pass
-	def __missing__(self,key):
-		pass
-	def __iter__ (self):
-		pass
-	def __next__(self):
-		pass
-	def __len__(self):
-		pass
-
-class SIM800 :
-	def __init__(self):
-		self.uart = UART(1,rx = 25,tx=26,baudrate=9600)
-		self.debugport = UART(2,tx=32,rx=33,baudrate=9600)
+		self.uart = UART(1,rx=25,tx=26,baudrate=9600)
 		self.buffer = b''
 		self.echo = b''
-		self._liEvent = {}
-		
 		self.running = False
-		
+		self.polling = False
+
 		self._liEvent = {}
 		self._liRequest = None
 		self._liCommand = None
-		self.polling = False
-		self.cleanup = True
 		self.belonged = False
-		
+		self._string = b''
 		self._liSocket = [None for _ in range(6)]
-		
+
+		self.gprs_connected = False
 		mainthread.create_task(self.routine())
-		
-	def socket(self,*args,**kwargs):
-		class socket :
-			def __init__(self,super,mode = 0):
-				self.super = super
-				self.id = self.super._liSocket.index(None)
-				self.super._liSocket[self.id] = sel
+		mainthread.create_task(self.gprs(True))
+
+
+	def __repr__(self):
+		if self.buffer != None :
+			print('[buffer]' , self.buffer)
+		if self._liCommand != None :
+			print('[command]' , self._liCommand)
+		if 

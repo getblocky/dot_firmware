@@ -1,74 +1,40 @@
-	if asyn.NamedTask.is_running(name):
+, time.ticks_ms() , None , None]
+hardware = {"uart" : ['repl',None,None],"spi" : ['flash',None,None]}
+async def cleanup():
+	print('[CLEANER] -? START')
+	global deinit_list , alarm_list
+	for x in deinit_list:
+		try :
+			print('deinit' , x)
+			x.deinit()
+		except:
+			pass
+	deinit_list = []	#refresh the list
+	alarm_list = [] #delete all alarm stuff
+	for x in asyn.NamedTask.instances :
+		if x.startswith('user'):
+			await asyn.NamedTask.cancel(x)
+
+	a=False
+	while a == False :
+		a = True
+		for x in asyn.NamedTask.instances:
+			if x.startswith('user'):
+				a = False
+				break
+		if a == True :
+			break
+		await asyncio.sleep_ms(10)
+	print('[CLEANER] -? DONE')
+
+async def call_once(name,function):
+	print('[CALLING] {} -> {}'.format(name,function))
+	try :
+		if name in asyn.NamedTask.instances:
+			if asyn.NamedTask.is_running(name):
 				await asyn.NamedTask.cancel ( name )
 				while asyn.NamedTask.is_running (name):
 					await asyncio.sleep_ms(10)
 	except :
 		pass
-	#mainthread.call_soon(asyn.NamedTask(name,function))
-	if function != None :
-		print('[CALLING] {} -> {}  DONE '.format(name,function))
-		mainthread.call_soon( asyn.NamedTask(name,function) ())
-		# Avoid pend throw for just stated-generator
-		await asyncio.sleep_ms(0)
-	else :
-		print('[CANCEL] {}'.format(name))
-
-def download(filename , path):
-	response = None
-	gc.collect()
-	try :
-		print('[Downloading]  File -> ' + str(filename), end = '')
-		response = urequests.get('https://raw.githubusercontent.com/getblocky/dot_firmware/master/ota/{}'.format(filename))
-		if response.status_code == 200 :
-			f = open('temp.py','w')
-			f.write(response.content)
-			print('#',end = '')
-			piece = 0
-			while True :
-				piece += 1
-				response = None
-				gc.collect()
-				try :
-					response = urequests.get('https://raw.githubusercontent.com/getblocky/dot_firmware/master/ota/{}_${}.{}'.format(filename.split('.')[0] , piece , filename.split('.')[1]))   
-					if response.status_code == 200 :
-						f.write(response.content)
-						print('#' , end = '')
-					else :
-						raise Exception
-				except Exception :
-					print('Pieces = ' , piece)
-					f.close()
-					os.rename('temp.py' , path)
-					break 
-		else :
-			print('[Download] Failed . Library ' , filename , 'not found on server')
-	except Exception as err:
-		import sys
-		sys.print_exception(err)
-		print('Failed')
-	
-	del response
-	gc.collect()
-	
-def get_list_library(file):
-	f = open(file)
-	cell = ''
-	while True :
-		t  = f.read(1)
-		cell += t
-		if cell[-2:] == '\n\n' or len(t)==0:
-			break
-	cell = cell.split('\n')
-	r = []
-	for line in cell :
-		library = ''
-		version = 0.0
-		if line.startswith('from '):
-			library = line.split('.')[1].split(' ')[0]
-			if '#version' in line :
-				version = float(line.split('=')[1])
-			r.append([library,version])
-	f.close()
-	return r
-	
-def get_
+	#mainthread.call_soon(asyn.NamedT

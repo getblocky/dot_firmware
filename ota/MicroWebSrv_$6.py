@@ -1,76 +1,29 @@
-arset=None, content=None) :
-			return self.WriteResponse(200, headers, contentType, contentCharset, content)
+riteResponseMethodNotAllowed()
+						elif upg == 'websocket' and 'MicroWebSocket' in globals() \
+							 and self._microWebSrv.AcceptWebSocketCallback :
+								MicroWebSocket( socket		 = self._socket,
+												httpClient	 = self,
+												httpResponse	 = response,
+												maxRecvLen	 = self._microWebSrv.MaxWebSocketRecvLen,
+												threaded		 = self._microWebSrv.WebSocketThreaded,
+												acceptCallback = self._microWebSrv.AcceptWebSocketCallback )
+								return
+						else :
+							response.WriteResponseNotImplemented()
+					else :
+						response.WriteResponseBadRequest()
+			except Exception as err:
+				core.sys.print_exception(err)
+				#response.WriteResponseInternalServerError()
+			try :
+				print('Socket Close')
+				self._socket.close()
+			except Exception as err:
+				import sys; sys.print_exception(err)
+				pass
 		
-
-
-		def WriteResponseError(self, code) :
-			responseCode = self._responseCodes.get(code, ('Unknown reason', ''))
-			return self.WriteResponse( code,
-										 None,
-										 "text/html",
-										 "UTF-8",
-										 self._errCtnTmpl % {
-											'code'	: code,
-											'reason'	: responseCode[0],
-											'message' : responseCode[1]
-										 } )
-		
-		def WriteResponseJSONError(self, code, obj=None) :
-			return self.WriteResponse( code,
-										 None,
-										 "application/json",
-										 "UTF-8",
-										 dumps(obj if obj else { }) )
-		
-		def WriteResponseBadRequest(self) :
-			return self.WriteResponseError(400)
-		
-		def WriteResponseForbidden(self) :
-			return self.WriteResponseError(403)
-		
-		def WriteResponseNotFound(self) :
-			if self._client._microWebSrv._notFoundUrl :
-				self.WriteResponseRedirect(self._client._microWebSrv._notFoundUrl)
-			else :
-				return self.WriteResponseError(404)
-		
-		def WriteResponseMethodNotAllowed(self) :
-			return self.WriteResponseError(405)
-		
-		def WriteResponseInternalServerError(self) :
-			return self.WriteResponseError(500)
-		
-		def WriteResponseNotImplemented(self) :
-			return self.WriteResponseError(501)
-		
-		_errCtnTmpl = """\
-		<html>
-			<head>
-				<title>Error</title>
-			</head>
-			<body>
-				<h1>%(code)d %(reason)s</h1>
-				%(message)s
-			</body>
-		</html>
-		"""
-		
-		_execErrCtnTmpl = """\
-		<html>
-			<head>
-				<title>Page execution error</title>
-			</head>
-			<body>
-				<h1>%(module)s page execution error</h1>
-				%(message)s
-			</body>
-		</html>
-		"""
-		
-		_responseCodes = {
-			
-		}
-
-
-
-
+		def _parseFirstLine(self, response) :
+			try :
+				elements = self._socket.readline().decode().strip().split()
+				if len(elements) == 3 :
+					sel

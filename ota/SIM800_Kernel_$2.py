@@ -1,71 +1,36 @@
-	
-	def trigger (self,kw,func):
-		pass
-	def parsing(self):
-		if self.buffer.startswith(self.echo):
-			self.buffer = self.buffer[len(self.echo):]
-			self.echo = b''
-		for x in self.buffer.splitlines():
-			if len(x)>0:
-				print('\t\t\t[PARSE]\t\t' ,x,end='')
-				self.belonged = False
-				self._jCommand(x)
-				self._jRequest(x)
-				self._jEvent(x)
-				if self.belonged == False :
-					print('< unknown >')
-		if self.cleanup == True :
-			self.buffer = b''
-	def _jEvent	(self,data):
-		if self.belonged :
+ or data[x:x+1].isalpha() or data[x:x+1].isdigit():
+					prefix += data[x:x+1]
+		self._liRequest = prefix
+		state(REQUEST,1)
+		start_time = ticks_ms()
+		await self.write((b'AT' if data.startswith(b'+') else b'')+data+(b'\r\n' if data.startswith(b'+') else b''))
+		self.polling = True
+		while isinstance(self._liRequest,bytes):
+			self.parsing()
+			while self.uart.any() == 0:
+				await asyncio.sleep_ms(10)
+				if ticks_diff(ticks_ms() , start_time) > timeout :
+					raise OSError
+			while self.uart.any() > 0:
+				self.buffer += self.uart.read()
+				await asyncio.sleep_ms(10)
+			self.parsing()
+
+		self.running = False
+		self.polling = False
+		state(REQUEST,0)
+		print('[request] {} == {}'.format(prefix,self._liRequest))
+		return self._liRequest
+
+	async def waitfor(self,data,timeout=10000):
+		timeout = 10000
+		if isinstance(data,bytearray):
+			data = bytes(data)
+		elif isinstance(data,str):
+			data = bytes(data,'utf-8')
+		elif isinstance(data,bytes):
+			data = data
+		else :
 			return
-		for key in self._liEvent.keys():
-			if data.find(key) > -1:
-				print('Event {} Received as {}'.format(key,data))
-				self.belonged = True
-				rep = data.split(b': ')[1].split(b',')
-				for x in range(len(rep)):
-					try :
-						rep[x] = int(rep[x])
-					except ValueError:
-						pass
-				self._liEvent[key] = rep
-		pass
-	def _jCommand(self,data):
-		if self.belonged :
-			return
-		if isinstance(self._liCommand,list) and data in self._liCommand:
-			self._liCommand = self._liCommand.index(data)
-			print('\t\t[COMMAND] Returned\t' , data , 'index=',self._liCommand)
-			self.belonged = True
-			
-	def _jRequest(self,data):
-		# some request response may not have "+" symbol
-		# we use regex for this stuff
-		if self.belonged :
-			return
-		if self._liRequest == None :
-			return
-		elif type(self._liRequest) == type(re.compile('')):
-			pass
-		elif isinstance(self._liRequest,bytes) and self._liRequest.startswith(b'*'):
-			if self._liRequest == b'*':
-				self._liRequest = [data]
-			else :
-				self._liRequest = self._liRequest[1:]
-				self.belonged = True
-		elif isinstance(self._liRequest,bytes):
-			if data.startswith(self._liRequest):
-				data = data[len(self._liRequest):]
-				data = data.replace(b':',b'')
-				data = data.split(b',')
-				for x in range(len(data)):
-					try :
-						data[x] = int(data[x])
-					except ValueError:
-						pass
-				print('\t\t[REQUEST] Returned : {}'.format(self._liRequest) , '=',data)
-				self.belonged = True
-				self._liRequest = data	
-		
-	async def co
+
+		state(

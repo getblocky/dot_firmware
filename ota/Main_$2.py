@@ -1,61 +1,34 @@
-		except :
-			pass
-		finally :
-			core.os.remove('last_word.py')
+t(500)
+		await core.indicator.rainbow()
+		return
+	else :
+		await core.indicator.show(None)
+	core._failsafeActive(False)
 
-async def main(online=False):
-	if not core.cfn_btn.value():
-		time = core.time.ticks_ms()
-		print('Configure: ',end='')
-		while not core.cfn_btn.value():
-			core.time.sleep_ms(500)
-			temp = ( core.time.ticks_ms() - time ) //1000
-			if temp > 0 and temp < 3 :
-				core.indicator.rgb.fill((0,25,0));core.indicator.rgb.write()
-			if temp > 3 and temp < 6 :
-				core.indicator.rgb.fill((25,25,0));core.indicator.rgb.write()
-			if temp > 6:
-				core.indicator.rgb.fill((255,0,0));core.indicator.rgb.write()
-		time = core.time.ticks_ms() - time ; time = time//1000
-		if time > 0 and time < 3 :
-			from Blocky.BootMode import BootMode
-			bootmode = BootMode()
-			await bootmode.Start()
-		if time > 3 and time < 6 :
-			core.os.remove('user_code.py')
-		if time > 6 :
-			core.os.remove('user_code.py')
-			core.os.remove('config.json')
-			try :
-				core.os.remove('Blocky/fuse.py')
-			except:
-				pass
-		core.machine.reset()
-	
-	# 
-	try :
-		core.config = core.json.loads(open('config.json').read())
-		if not all(elem in list(core.config.keys()) for elem in ['token','known_networks']):
-			raise Exception
-		if len(core.config['token']) == 0 or len(core.config['known_networks'])==0:
-			raise Exception
-			
-	except Exception as err:
-		core.sys.print_exception(err)
-		print('[config] -> error , init bootmode')
-		from Blocky.BootMode import BootMode
-		bootmode = BootMode()
-		await bootmode.Start()
-		core.machine.reset()
-		
-	# when in Offline mode , press config to be back online
-	if core.eeprom.get('OFFLINE') == True  :
-		def back_online(s):
-			core.mainthread.call_soon(main(True))
-			core.cfn_btn.irq(trigger=0)
-		core.cfn_btn.irq(trigger = core.machine.Pin.IRQ_FALLING , handler = back_online)
-		print('running offline mode ! press config to be back online')
-		if core.eeprom.get('EXT_SOCKET') == True :
-			print('[OFFLINE MODE] -> running blynk , timer and other service')
-			core.blynk = Blynk(core.config['token'],ota = run_user_code)
-		
+	"""
+		By defaults , the system will run user code and connecting at the same time
+		Sometimes , these two task yield RuntimeError
+		Which will kill user code , wait for the network to connect and then re-run user_code
+	"""
+	if direct == True :
+		print('[user-code] -> run directly')
+		core._failsafeActive(True)
+		core.user_code = __import__('user_code')
+		core.gc.collect()
+		await core.blynk.log('[HEAP] {}'.format(core.gc.mem_free())  )
+		return
+
+	list_library = core.get_list_library('user_code.py')
+	list_library_update = []
+	for x in list_library:
+		print('[library] -> checking {}'.format(x) , end = '')
+		current_version = core.get_library_version(x[0])
+		if current_version == None or current_version < x[1] :
+			list_library_update.append(x[0])
+			print(False)
+		else :
+			print(True)
+
+	if len(list_library_update):
+		core.eeprom.set('LIB',list_library_update)
+		core.

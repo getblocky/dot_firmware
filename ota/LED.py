@@ -2,13 +2,13 @@
 
 import sys
 core = sys.modules['Blocky.Core']
-
+from machine import PWM,Pin
 class LED:
 	def __init__(self,port):
 		self.p = core.getPort(port)
-		if self.p[0] == None : return 
-		self.pwm = core.machine.PWM(core.machine.Pin(self.p[0]), duty = 0 , freq = 38000)
-		
+		if self.p[0] == None : return
+		self.pwm = PWM(Pin(self.p[0]), duty = 0 , freq = 38000)
+		core.deinit_list.append(self)
 	def turn (self , value):
 		try :
 			if isinstance(value,int):
@@ -28,10 +28,13 @@ class LED:
 						self.pwm.duty(0)
 		except :
 			pass
-				
+
 	def fade(self , value):
 		try :
 			value = max(0,min(1023,value//4))
 			self.pwm.init(duty = value , freq = 38000)
-		except :
+		except Exception:
 			pass
+	def deinit(self):
+		self.pwm.deinit()
+		Pin(self.p[0] , Pin.IN)

@@ -1,0 +1,2 @@
+d([day , time , function])
+	

@@ -1,64 +1,46 @@
-re returned even if not requested, and
-                    # are sticky, i.e. will be returned again and again.
-                    # If the caller doesn't do proper error handling and
-                    # unregister this sock, we'll busy-loop on it, so we
-                    # as well can unregister it now "just in case".
-                    self.remove_reader(sock)
-                if DEBUG and __debug__:
-                    log.debug("Calling IO callback: %r", cb)
-                if isinstance(cb, tuple):
-                    cb[0](*cb[1])
-                else:
-                    cb.pend_throw(None)
-                    self.call_soon(cb)
 
 
-class StreamReader:
+            # Wait until next waitq task or I/O availability
+            delay = 0
+            if not self.runq:
+                delay = -1
+                if self.waitq:
+                    tnow = self.time()
+                    t = self.waitq.peektime()
+                    delay = time.ticks_diff(t, tnow)
+                    if delay < 0:
+                        delay = 0
+            self.wait(delay)
 
-    def __init__(self, polls, ios=None):
-        if ios is None:
-            ios = polls
-        self.polls = polls
-        self.ios = ios
+    def run_until_complete(self, coro):
+        def _run_and_stop():
+            yield from coro
+            yield StopLoop(0)
+        self.call_soon(_run_and_stop())
+        self.run_forever()
 
-    def read(self, n=-1):
-        while True:
-            yield IORead(self.polls)
-            res = self.ios.read(n)
-            if res is not None:
-                break
-            # This should not happen for real sockets, but can easily
-            # happen for stream wrappers (ssl, websockets, etc.)
-            #log.warn("Empty read")
-        if not res:
-            yield IOReadDone(self.polls)
-        return res
+    def stop(self):
+        self.call_soon((lambda: (yield StopLoop(0)))())
 
-    def readexactly(self, n):
-        buf = b""
-        while n:
-            yield IORead(self.polls)
-            res = self.ios.read(n)
-            assert res is not None
-            if not res:
-                yield IOReadDone(self.polls)
-                break
-            buf += res
-            n -= len(res)
-        return buf
+    def close(self):
+        pass
 
-    def readline(self):
-        if DEBUG and __debug__:
-            log.debug("StreamReader.readline()")
-        buf = b""
-        while True:
-            yield IORead(self.polls)
-            res = self.ios.readline()
-            assert res is not None
-            if not res:
-                yield IOReadDone(self.polls)
-                break
-            buf += res
-            if buf[-1] == 0x0a:
-                break
-        if 
+
+class SysCall:
+
+    def __init__(self, *args):
+        self.args = args
+
+    def handle(self):
+        raise NotImplementedError
+
+# Optimized syscall with 1 arg
+class SysCall1(SysCall):
+
+    def __init__(self, arg):
+        self.arg = arg
+
+class StopLoop(SysCall1):
+    pass
+
+class I

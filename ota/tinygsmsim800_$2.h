@@ -1,93 +1,40 @@
-fo         rx;
-};
-
-class GsmClientSecure : public GsmClient
-{
-public:
-  GsmClientSecure() {}
-
-  GsmClientSecure(TinyGsmSim800& modem, uint8_t mux = 1)
-    : GsmClient(modem, mux)
-  {}
-
-public:
-  virtual int connect(const char *host, uint16_t port) {
-    stop();
-    TINY_GSM_YIELD();
+esponse();
     rx.clear();
-    sock_connected = at->modemConnect(host, port, mux, true);
-    return sock_connected;
-  }
-};
-
-public:
-
-  TinyGsmSim800(Stream& stream)
-    : stream(stream)
-  {
-    memset(sockets, 0, sizeof(sockets));
   }
 
-  /*
-   * Basic functions
-   */
-  bool begin() {
-    return init();
+  virtual size_t write(const uint8_t *buf, size_t size) {
+    TINY_GSM_YIELD();
+    at->maintain();
+    return at->modemSend(buf, size, mux);
   }
 
-  bool init() {
-    if (!testAT()) {
-      return false;
-    }
-    sendAT(GF("&FZ"));  // Factory + Reset
-    waitResponse();
-    sendAT(GF("E0"));   // Echo Off
-    if (waitResponse() != 1) {
-      return false;
-    }
-    getSimStatus();
-    return true;
+  virtual size_t write(uint8_t c) {
+    return write(&c, 1);
   }
 
-  void setBaud(unsigned long baud) {
-    sendAT(GF("+IPR="), baud);
+  virtual size_t write(const char *str) {
+    if (str == NULL) return 0;
+    return write((const uint8_t *)str, strlen(str));
   }
 
-  bool testAT(unsigned long timeout = 10000L) {
-    //streamWrite(GF("AAAAA" GSM_NL));  // TODO: extra A's to help detect the baud rate
-    for (unsigned long start = millis(); millis() - start < timeout; ) {
-      sendAT(GF(""));
-      if (waitResponse(200) == 1) {
-        delay(100);
-        return true;
+  virtual int available() {
+    TINY_GSM_YIELD();
+    if (!rx.size() && sock_connected) {
+      // Workaround: sometimes SIM800 forgets to notify about data arrival.
+      // TODO: Currently we ping the module periodically,
+      // but maybe there's a better indicator that we need to poll
+      if (millis() - prev_check > 500) {
+        got_data = true;
+        prev_check = millis();
       }
-      delay(100);
+      at->maintain();
     }
-    return false;
+    return rx.size() + sock_available;
   }
 
-  void maintain() {
-    for (int mux = 0; mux < TINY_GSM_MUX_COUNT; mux++) {
-      GsmClient* sock = sockets[mux];
-      if (sock && sock->got_data) {
-        sock->got_data = false;
-        sock->sock_available = modemGetAvailable(mux);
-      }
-    }
-    while (stream.available()) {
-      waitResponse(10, NULL, NULL);
-    }
-  }
-
-  bool factoryDefault() {
-    sendAT(GF("&FZE0&W"));  // Factory + Reset + Echo Off + Write
-    waitResponse();
-    sendAT(GF("+IPR=0"));   // Auto-baud
-    waitResponse();
-    sendAT(GF("+IFC=0,0")); // No Flow Control
-    waitResponse();
-    sendAT(GF("+ICF=3,3")); // 8 data 0 parity 1 stop
-    waitResponse();
-    sendAT(GF("+CSCLK=0")); // Disable Slow Clock
-    waitResponse();
-    s
+  virtual int read(uint8_t *buf, size_t size) {
+    TINY_GSM_YIELD();
+    at->maintain();
+    size_t cnt = 0;
+    while (cnt < size && sock_connected) {
+   

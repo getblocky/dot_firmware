@@ -1,56 +1,33 @@
-riteResponseMethodNotAllowed()
-						elif upg == 'websocket' and 'MicroWebSocket' in globals() \
-							 and self._microWebSrv.AcceptWebSocketCallback :
-								MicroWebSocket( socket		 = self._socket,
-												httpClient	 = self,
-												httpResponse	 = response,
-												maxRecvLen	 = self._microWebSrv.MaxWebSocketRecvLen,
-												threaded		 = self._microWebSrv.WebSocketThreaded,
-												acceptCallback = self._microWebSrv.AcceptWebSocketCallback )
-								return
-						else :
-							response.WriteResponseNotImplemented()
-					else :
-						response.WriteResponseBadRequest()
-			except Exception as err:
-				core.sys.print_exception(err)
-				#response.WriteResponseInternalServerError()
-			try :
-				print('Socket Close')
-				self._socket.close()
-			except Exception as err:
-				import sys; sys.print_exception(err)
-				pass
-		
-		def _parseFirstLine(self, response) :
-			try :
-				elements = self._socket.readline().decode().strip().split()
-				if len(elements) == 3 :
-					self._method	= elements[0].upper()
-					self._path	= elements[1]
-					self._httpVer = elements[2].upper()
-					elements		= self._path.split('?', 1)
-					if len(elements) > 0 :
-						self._resPath = MicroWebSrv._unquote_plus(elements[0])
-						if len(elements) > 1 :
-							self._queryString = elements[1]
-							elements = self._queryString.split('&')
-							for s in elements :
-								param = s.split('=', 1)
-								if len(param) > 0 :
-									value = MicroWebSrv._unquote(param[1]) if len(param) > 1 else ''
-									self._queryParams[MicroWebSrv._unquote(param[0])] = value
-					return True
-			except :
-				pass
-			return False
+int_exception(err)
+				if self.success == True :
+					print('setup success , resetting')
+					break
+			self._started = False
+			print('CLOSE AP')
+		except Exception as err:
+			print( ' _socket -> ' , err)
 	
-		
-		def _parseHeader(self, response) :
-			while True :
-				elements = self._socket.readline().decode().strip().split(':', 1)
-				if len(elements) == 2 :
-					self._headers[elements[0].strip()] = elements[1].strip()
-				elif len(elements) == 1 and len(elements[0]) == 0 :
-					if self._method == 'POST' :
-						self._contentType	 = self._headers.get("Content-Type", N
+	# ===( Functions )============================================================
+	def setup_success(self):
+		self.success = True
+	async def Start(self, threaded=True) :
+		if not self._started :
+			reset_timer = core.machine.Timer(1)
+			reset_timer.init(mode=core.machine.Timer.ONE_SHOT,period = 1800000,callback =lambda t:core.machine.reset())
+			self._socket = core.socket.socket( core.socket.AF_INET,
+											core.socket.SOCK_STREAM,
+											core.socket.IPPROTO_TCP )
+			self._socket.setsockopt( core.socket.SOL_SOCKET,
+									 core.socket.SO_REUSEADDR,
+									 1 )
+									 
+			self._socket.bind(self._srvAddr)
+			self._socket.listen(1)
+			self._socket.setblocking(False)
+			await self._socketProcess ()
+			
+	def Stop(self) :
+		if self._started :
+			self._socket.close()
+
+	def IsS

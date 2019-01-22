@@ -1,29 +1,32 @@
---------------------------------------
+	contentType	 = "text/html",
+				contentCharset = "UTF-8",
+				content = 'Failed')
 		
-		#-------------------------------------------------
-		self.wlan_sta.active(True)
-		self.wlan_ap.active(True)
-		
-		self.wlan_ap.config(essid = ap_name , password = ap_password	)
+		"""
+		if self.wifi_status == 1:
+			print('Wait for rebooting')
+			time.sleep(5)
+			print('Rebooting')
+			machine.reset()
+		"""
 
-		routeHandlers = [
-			("/", "GET", self._httpHandlerIndexGet),
-			("/aplist", "GET", self._httpHandlerScanNetworks),
-			("/status", "GET", self._httpHandlerCheckStatus),
-			("/save", "POST",	self._httpHandlerSaveConfig)
-		]
+	def _httpHandlerSaveConfig(self, httpClient, httpResponse):
+		self.request_json  = ''
+		self.request_json = core.json.loads(httpClient.ReadRequestContent().decode('ascii'))
+		self.wifi_status = 0
+		httpResponse.WriteResponseOk(headers = None,contentType= "text/html",	contentCharset = "UTF-8",content = 'OK')
+		self.wlan_sta.connect(self.request_json['ssid'], self.request_json['password'])
 		
-		from Blocky.MicroWebSrv import MicroWebSrv
-		self.server = MicroWebSrv(routeHandlers = routeHandlers)
-		print('bootmode-> started')
-		#loop = asyncio.get_event_loop()
-		#loop.create_task(server.Start())
+		#
+		while not self.wlan_sta.isconnected() :
+			core.time.sleep_ms(100)
+			print('.',end = '')
+		#
 		
-		await self.server.Start()
-		print('bootmode-> completed')
-			
-		from machine import reset
-		reset()
+		print('client->saveconfig: Trying to connect to ' + str(self.request_json) , end = '')
+		# we cant wait until the network to be connect here !
+	def is_ascii(self, s):
+		return all(ord(c) < 128 for c in s)
 	
-
-
+	def _httpHandlerScanNetworks(self, httpClient, httpResponse) :
+		print('scan

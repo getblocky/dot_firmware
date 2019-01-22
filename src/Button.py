@@ -66,6 +66,6 @@ class Button:
 			print('btn-exec->' , err)
 			pass
 
-	def deinit():
+	def deinit(self):
 		self.button.irq(trigger=0)
 		Pin(self.p[0],Pin.IN)

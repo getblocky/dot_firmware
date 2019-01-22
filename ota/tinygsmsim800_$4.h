@@ -1,82 +1,57 @@
-    return "";
-    }
-    String res = stream.readStringUntil('\n');
-    waitResponse();
-    res.trim();
-    return res;
-  }
+fo         rx;
+};
 
-  String getIMEI() {
-    sendAT(GF("+GSN"));
-    if (waitResponse(GF(GSM_NL)) != 1) {
-      return "";
-    }
-    String res = stream.readStringUntil('\n');
-    waitResponse();
-    res.trim();
-    return res;
-  }
+class GsmClientSecure : public GsmClient
+{
+public:
+  GsmClientSecure() {}
 
-  SimStatus getSimStatus(unsigned long timeout = 10000L) {
-    for (unsigned long start = millis(); millis() - start < timeout; ) {
-      sendAT(GF("+CPIN?"));
-      if (waitResponse(GF(GSM_NL "+CPIN:")) != 1) {
-        delay(1000);
-        continue;
-      }
-      int status = waitResponse(GF("READY"), GF("SIM PIN"), GF("SIM PUK"), GF("NOT INSERTED"));
-      waitResponse();
-      switch (status) {
-      case 2:
-      case 3:  return SIM_LOCKED;
-      case 1:  return SIM_READY;
-      default: return SIM_ERROR;
-      }
-    }
-    return SIM_ERROR;
-  }
+  GsmClientSecure(TinyGsmSim800& modem, uint8_t mux = 1)
+    : GsmClient(modem, mux)
+  {}
 
-  RegStatus getRegistrationStatus() {
-    sendAT(GF("+CREG?"));
-    if (waitResponse(GF(GSM_NL "+CREG:")) != 1) {
-      return REG_UNKNOWN;
-    }
-    streamSkipUntil(','); // Skip format (0)
-    int status = stream.readStringUntil('\n').toInt();
-    waitResponse();
-    return (RegStatus)status;
+public:
+  virtual int connect(const char *host, uint16_t port) {
+    stop();
+    TINY_GSM_YIELD();
+    rx.clear();
+    sock_connected = at->modemConnect(host, port, mux, true);
+    return sock_connected;
   }
+};
 
-  String getOperator() {
-    sendAT(GF("+COPS?"));
-    if (waitResponse(GF(GSM_NL "+COPS:")) != 1) {
-      return "";
-    }
-    streamSkipUntil('"'); // Skip mode and format
-    String res = stream.readStringUntil('"');
-    waitResponse();
-    return res;
+public:
+
+  TinyGsmSim800(Stream& stream)
+    : stream(stream)
+  {
+    memset(sockets, 0, sizeof(sockets));
   }
 
   /*
-   * Generic network functions
+   * Basic functions
    */
+  bool begin() {
+    return init();
+  }
 
-  int getSignalQuality() {
-    sendAT(GF("+CSQ"));
-    if (waitResponse(GF(GSM_NL "+CSQ:")) != 1) {
-      return 99;
+  bool init() {
+    if (!testAT()) {
+      return false;
     }
-    int res = stream.readStringUntil(',').toInt();
+    sendAT(GF("&FZ"));  // Factory + Reset
     waitResponse();
-    return res;
+    sendAT(GF("E0"));   // Echo Off
+    if (waitResponse() != 1) {
+      return false;
+    }
+    getSimStatus();
+    return true;
   }
 
-  bool isNetworkConnected() {
-    RegStatus s = getRegistrationStatus();
-    return (s == REG_OK_HOME || s == REG_OK_ROAMING);
+  void setBaud(unsigned long baud) {
+    sendAT(GF("+IPR="), baud);
   }
 
-  bool waitForNetwork(unsigned long timeout = 60000L) {
-    for (unsigned long start = millis(); millis() - start < timeout; ) {
-      if (isNetworkConnec
+  bool testAT(unsigned long timeout = 10000L) {
+    //streamWrite(GF("AAAAA" GSM_NL)

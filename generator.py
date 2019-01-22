@@ -1,10 +1,10 @@
 
-		
-import os 
 
-# Get list of source file 
+import os
+
+# Get list of source file
 path = "src"
-LIMIT_SIZE = 2000
+LIMIT_SIZE = 1000
 import glob, os , math
 print(glob.glob(path))
 list_src = os.listdir(path)
@@ -20,12 +20,12 @@ for x in code :
 		print('\t<<<<<<----------' , math.ceil(len(code[x])/LIMIT_SIZE ))
 	else :
 		print()
-		
+
 temp = os.listdir('ota')
 for x in temp :
 	os.remove('ota/' + x)
 	print('Remove -> ' , 'ota/' + x)
-	
+
 for x in code :
 	if len(code[x]) <= LIMIT_SIZE :
 		f = open('ota/' + x , 'w')
@@ -49,7 +49,3 @@ for x in code :
 			f = open('ota/' + x.replace( '.' + x.split('.')[-1]   , '_$' + str(i) +  '.' + x.split('.')[-1]  ) , 'w')
 			f.write(code[x][ LIMIT_SIZE*i :LIMIT_SIZE*(i+1)])
 			f.close()
-		
-		
-		
-		

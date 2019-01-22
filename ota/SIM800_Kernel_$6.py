@@ -1,29 +1,35 @@
-n(r) <= 1 else [r[1],r[2]]
-		
+[x])
+							except ValueError:
+								pass
+						self._liEvent[key] = data
+
+	def _jCommand(self,data):
+		if self.belonged:
+			return
+		data = data.lstrip()
+		if isinstance(self._liCommand,list) and data in self._liCommand:
+			self._liCommand = self._liCommand.index(data)
+			print('[command] [{}] == {}'.format(data,self._liCommand))
+			self.belonged = True
+
+	def _jRequest(self,data):
+		if self.belonged:
+			return
+		data = data.lstrip()
+		if self._liRequest == None :
+			return
+		elif isinstance(self._liRequest,bytes) and self._liRequest.startswith(b'*'):
+			if self._liRequest == b'*':
+				self._liRequest = [data]
+			else :
+				self._liRequest = self._liRequest[1:]
+			self.belonged = True
+		elif isinstance(self._liRequest,bytes) and not self._liRequest.startswith(b'*'):
+			if data.startswith(self._liRequest):
+				data = data[len(self._liRequest):]
+				data = data.replace(b':',b'').split(b',')
+				for x in range(len(data)):
+					try :
+						data[x] = int(data[x])
+					except ValueError:
 	
-	
-# =================== Test Case ======================
-sim = SIM800()
-async def app():
-	while True :
-		print('='*100)
-		r = await sim.request('+CSQ')
-		print()
-		await sim.gprs(True)
-		
-		#await sim.http('raw.githubusercontent.com/getblocky/dot_firmware/master/generator.py')
-		#await sim.http('cosin.herokuapp.com/test')
-		
-		await sim.sync_ntp()
-		await asyncio.sleep_ms(2000)
-async def f1():
-	print('SMS is READY')
-	
-async def event ():
-	while True :
-		sim.trigger('SMS Ready',f1)
-		
-		
-mainthread.create_task(app())
-mainthread.run_forever()
-start_new_thread(mainthread.run_forever,())

@@ -1,73 +1,36 @@
-Semaphore(Semaphore):
+ued
+class Event():
 	
-	def __init__(self, value=1):
-		super().__init__(value)
-		self._initial_value = value
+	def __init__(self, lp=False):  # Redundant arg retained for compatibility
+		self.clear()
 
-	def release(self):
-		if self._count < self._initial_value:
-			self._count += 1
-		else:
-			raise ValueError('Semaphore released more than acquired')
-"""
-# Task Cancellation
-try:
-	StopTask = core.asyncio.CancelledError  # More descriptive name
-except AttributeError:
-	raise OSError('asyn.py requires ucore.asyncio V1.7.1 or above.')
-"""
-class TaskId():
-	
-	def __init__(self, taskid):
-		self.taskid = taskid
+	def clear(self):
+		self._flag = False
+		self._data = None
 
-	def __call__(self):
-		return self.taskid
+	def __await__(self):
+		while not self._flag:
+			yield
 
-# Sleep coro breaks up a sleep into shorter intervals to ensure a rapid
-# response to StopTask exceptions
-async def sleep(t, granularity=100):  # 100ms default
-	
-	if granularity <= 0:
-		raise ValueError('sleep granularity must be > 0')
-	t = int(t * 1000)  # ms
-	if t <= granularity:
-		await core.asyncio.sleep_ms(t)
-	else:
-		n, rem = divmod(t, granularity)
-		for _ in range(n):
-			await core.asyncio.sleep_ms(granularity)
-		await core.asyncio.sleep_ms(rem)
+	__iter__ = __await__
 
-# Anonymous cancellable tasks. These are members of a group which is identified
-# by a user supplied name/number (default 0). Class method cancel_all() cancels
-# all tasks in a group and awaits confirmation. Confirmation of ending (whether
-# normally or by cancellation) is signalled by a task calling the _stopped()
-# class method. Handled by the @cancellable decorator.
+	def is_set(self):
+		return self._flag
 
+	def set(self, data=None):
+		self._flag = True
+		self._data = data
 
-class Cancellable():
-	
-	task_no = 0  # Generated task ID, index of tasks dict
-	tasks = {}  # Value is [coro, group, barrier] indexed by integer task_no
+	def value(self):
+		return self._data
 
-	@classmethod
-	def _cancel(cls, task_no):
-		task = cls.tasks[task_no][0]
-		core.asyncio.cancel(task)
+# A Barrier synchronises N coros. Each issues await barrier.
+# Execution pauses until all other participant coros are waiting on it.
+# At that point the callback is executed. Then the barrier is 'opened' and
+# execution of all participants resumes.
 
-	@classmethod
-	async def cancel_all(cls, group=0, nowait=False):
-		tokill = cls._get_task_nos(group)
-		barrier = Barrier(len(tokill) + 1)  # Include this task
-		for task_no in tokill:
-			cls.tasks[task_no][2] = barrier
-			cls._cancel(task_no)
-		if nowait:
-			barrier.trigger()
-		else:
-			await barrier
-
-	@classmethod
-	def _is_running(cls, group=0):
-		t
+# The nowait arg is to support task cancellation. It enables usage where one or
+# more coros can register that they have reached the barrier without waiting
+# for it. Any coros waiting normally on the barrier will pause until all
+# non-waiting coros have passed the barrier and all waiting ones have reached
+# it. The use of nowait promotes efficiency 

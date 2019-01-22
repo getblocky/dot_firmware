@@ -1,14 +1,17 @@
 #version=2.0
 import sys
 core=sys.modules['Blocky.Core']
+from machine import Pin
 class Relay :
 	def __init__(self , port):
 		self.p = core.getPort(port)
 		if self.p[0] == None :
-			return 
-		self.switch = core.machine.Pin(self.p[0] , core.machine.Pin.OUT)
+			return
+		self.port = port
+		self.switch = Pin(self.p[0] , Pin.OUT)
 		self.switch.value(0)
-		
+		core.deinit_list.append(self)
+
 	def turn(self , state):
 		try :
 			if isinstance(state , int):
@@ -26,4 +29,5 @@ class Relay :
 		return self.switch.value()
 	def flip(self):
 		self.switch.value(not self.switch.value())
-
+	def deinit(self):
+		Pin(self.p[0],Pin.IN)

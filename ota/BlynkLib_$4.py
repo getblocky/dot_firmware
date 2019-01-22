@@ -1,60 +1,28 @@
-lf.state == AUTHENTICATED:
-			await self._send(self._format_msg(MSG_EMAIL, email, subject, content))
+r.pulse(color = (0,50,0))
+								for x in range(50):
+									core.indicator.rgb.fill((0,x,0));core.indicator.rgb.write()
+									await core.wait(1)
+								for x in range(50,-1,-1):
+									core.indicator.rgb.fill((0,x,0));core.indicator.rgb.write()
+									await core.wait(1)
+								core.mainthread.call_soon(self.ota())
+							if curre_part < total_part:
+								progress = int(curre_part)%13
+								total = int(total_part)%13
+								total = 12 if total_part - curre_part > 12 else total
+								for x in range(total):
+									core.indicator.rgb[x] = (25,0,0)
+								for x in range(progress):
+									core.indicator.rgb[x] = (0,25,0)
+								core.indicator.rgb.write()
+								core.ota_file.write(params[0])
+								core.ota_file.flush()
+								await self.log('[OTA_ACK]'+str([sha1,params[1]]))
 
-	async def virtual_write(self,pin,val,device = None):
-		if self.state == AUTHENTICATED:
-			if device == None:
-				await self._send(self._format_msg(MSG_HW, 'vw', pin, val))
-			else : 
-				await self._send(self._format_msg(MSG_BRIDGE ,124, 'i' , device)) # Set channel V124 of this node to point to that device
-				await self._send(self._format_msg(MSG_BRIDGE, 124,'vw',  pin , val))
-				
-	async def set_property(self, pin, prop, val):
-		if self.state == AUTHENTICATED:
-			await self._send(self._format_msg(MSG_PROPERTY, pin, prop, val))
+					else :
+						await self.log('[DOT_ERROR] OTA_LOCKED')
 
-	async def log_event(self, event, descr=None):
-		if self.state == AUTHENTICATED:
-			if descr==None:
-				await self._send(self._format_msg(MSG_EVENT_LOG, event))
-			else:
-				await self._send(self._format_msg(MSG_EVENT_LOG, event, descr))
-				
-	async def log(self,message):
-		await self.virtual_write(device = self._token.decode('utf-8') , pin = 127 , val = message )
-		
-	async def sync_all(self):
-		if self.state == AUTHENTICATED:
-			await self._send(self._format_msg(MSG_HW_SYNC))
-
-	async def sync_virtual(self, pin):
-		if self.state == AUTHENTICATED:
-			await self._send(self._format_msg(MSG_HW_SYNC, 'vr', pin))
-	
-	async def sending(self,to,data):
-		await self._send(self._format_msg(MSG_HW,'vw',pin,val))
-		
-	async def run(self):
-		self._start_time = core.Timer.runtime()
-		self._task_millis = self._start_time
-		self._hw_pins = {}
-		self._rx_data = b''
-		self._msg_id = 1
-		self._timeout = None
-		self._tx_count = 0
-		self._m_time = 0
-		self.state = DISCONNECTED
-		
-		if not self._ext_socket:
-			while not core.wifi.wlan_sta.isconnected():
-				self.last_call = core.Timer.runtime()
-				await core.wait(500)
-		while True :
-			self._start_time = core.Timer.runtime()
-			self.last_call = core.Timer.runtime()
-			# Connecting to Blynk Server
-			while self.state != AUTHENTICATED:
-				try:
-					self.last_call = core.Timer.runtime()
-					await core.wait(100)
-	
+				# User defined channel
+				# Note that "vr" and "vw" is the same
+				elif (str(pin) in self._vr_pins):
+					self.message = par

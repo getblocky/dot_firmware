@@ -1,93 +1,51 @@
-endAT(GF("&W"));       // Write configuration
-    return waitResponse() == 1;
+   size_t chunk = TinyGsmMin(size-cnt, rx.size());
+      if (chunk > 0) {
+        rx.get(buf, chunk);
+        buf += chunk;
+        cnt += chunk;
+        continue;
+      }
+      // TODO: Read directly into user buffer?
+      at->maintain();
+      if (sock_available > 0) {
+        at->modemRead(rx.free(), mux);
+      } else {
+        break;
+      }
+    }
+    return cnt;
   }
 
-  String getModemInfo() {
-    sendAT(GF("I"));
-    String res;
-    if (waitResponse(1000L, res) != 1) {
-      return "";
+  virtual int read() {
+    uint8_t c;
+    if (read(&c, 1) == 1) {
+      return c;
     }
-    res.replace(GSM_NL "OK" GSM_NL, "");
-    res.replace(GSM_NL, " ");
-    res.trim();
-    return res;
+    return -1;
   }
 
-  bool hasSSL() {
-#if defined(TINY_GSM_MODEM_SIM900)
-    return false;
-#else
-    sendAT(GF("+CIPSSL=?"));
-    if (waitResponse(GF(GSM_NL "+CIPSSL:")) != 1) {
-      return false;
+  virtual int peek() { return -1; } //TODO
+  virtual void flush() { at->stream.flush(); }
+
+  virtual uint8_t connected() {
+    if (available()) {
+      return true;
     }
-    return waitResponse() == 1;
-#endif
+    return sock_connected;
   }
+  virtual operator bool() { return connected(); }
 
   /*
-   * Power functions
+   * Extended API
    */
 
-  bool restart() {
-    if (!testAT()) {
-      return false;
-    }
-    //Enable Local Time Stamp for getting network time
-    // TODO: Find a better place for this
-    sendAT(GF("+CLTS=1"));
-    if (waitResponse(10000L) != 1) {
-      return false;
-    }
-    sendAT(GF("&W"));
-    waitResponse();
-    sendAT(GF("+CFUN=0"));
-    if (waitResponse(10000L) != 1) {
-      return false;
-    }
-    sendAT(GF("+CFUN=1,1"));
-    if (waitResponse(10000L) != 1) {
-      return false;
-    }
-    delay(3000);
-    return init();
-  }
+  String remoteIP() TINY_GSM_ATTR_NOT_IMPLEMENTED;
 
-  bool poweroff() {
-    sendAT(GF("+CPOWD=1"));
-    return waitResponse(GF("NORMAL POWER DOWN")) == 1;
-  }
-
-  bool radioOff() {
-    sendAT(GF("+CFUN=0"));
-    if (waitResponse(10000L) != 1) {
-      return false;
-    }
-    delay(3000);
-    return true;
-  }
-
-  /*
-    During sleep, the SIM800 module has its serial communication disabled. In order to reestablish communication
-    pull the DRT-pin of the SIM800 module LOW for at least 50ms. Then use this function to disable sleep mode.
-    The DTR-pin can then be released again.
-  */
-  bool sleepEnable(bool enable = true) {
-    sendAT(GF("+CSCLK="), enable);
-    return waitResponse() == 1;
-  }
-
-  /*
-   * SIM card functions
-   */
-
-  bool simUnlock(const char *pin) {
-    sendAT(GF("+CPIN=\""), pin, GF("\""));
-    return waitResponse() == 1;
-  }
-
-  String getSimCCID() {
-    sendAT(GF("+ICCID"));
-    if (waitResponse(GF(GSM_NL "+ICCID:")) != 1) {
-  
+private:
+  TinyGsmSim800* at;
+  uint8_t        mux;
+  uint16_t       sock_available;
+  uint32_t       prev_check;
+  bool           sock_connected;
+  bool           got_data;
+  RxFi

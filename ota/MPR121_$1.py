@@ -1,61 +1,31 @@
-dfrom_mem(self.address, register, 2)
-			return core.struct.unpack("<H", data)[0]
-		self.i2c.writeto_mem(self.address, register, core.struct.pack("<H", value))
+E FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+import sys
+core = sys.modules['Blocky.Core']
 
-	def reset(self):
-		try :
-			# Soft reset of device.
-			
-			self._register8( 128, 0x63)
-			core.time.sleep_ms(1)
-			self._register8( 94, 0x00)
-			# Check CDT, SFI, ESI configuration is at default values.
-			c = self._register8( 93)
-			if c != 0x24:
-			   return False
-			# Set threshold for touch and release to default values.
-			self.set_thresholds(12, 6)
-			# Configure baseline filtering control registers.
-			self._register8( 43, 0x01)
-			self._register8( 44, 0x01)
-			self._register8( 45, 0x0E)
-			self._register8( 46, 0x00)
-			self._register8( 47, 0x01)
-			self._register8( 48, 0x05)
-			self._register8( 49, 0x01)
-			self._register8( 50, 0x00)
-			self._register8( 51, 0x00)
-			self._register8( 52, 0x00)
-			self._register8( 53, 0x00)
-			# Set other configuration registers.
-			self._register8( 91, 0)
-			self._register8( 92, 0x10) # default, 16uA charge current
-			self._register8( 93, 0x20) # 0.5uS encoding, 1ms period
-			# Enable all electrodes.
-			self._register8( 94, 0x8F) # start with first 5 bits of baseline tracking
-			# All done, everything succeeded!
-			print('[MPR121] -> Reset successful')
-			self.error = False
-		except Exception:
-			pass 
-		return True
+def get_bit(byteval,idx):
+	return ((byteval&(1<<idx))!=0)
+	
+class MPR121:
+	def __init__(self, port, address=0x5A):
+		self.p = core.getPort( port )
+		self.port = port
+		self.i2c = core.machine.I2C ( scl = core.machine.Pin(self.p[0]) , sda = core.machine.Pin(self.p[1]) )
+		self.address = address
+		self.error = False
+		self.prev = 0
+		self.handler = [ [None,None] for x in range(12) ]
+		self.reset()
+		core.mainthread.call_soon(core.asyn.Cancellable(self.poller)())
+	
+	def _register8(self, register, value=None):
+		if value is None:
+			return self.i2c.readfrom_mem(self.address, register, 1)[0]
+		self.i2c.writeto_mem(self.address, register, bytearray([value]))
 
-	def set_thresholds(self, touch, release, electrode=None):
-		"""Sets the touch and release thresholds (0-255) for a single electrode (0-11) or all electrodes"""
-		if not 0 <= touch <= 255:
-			raise ValueError('Touch must be in range 0-255.')
-		if not 0 <= release <= 255:
-			raise ValueError('Release must be in range 0-255.')
-		f = 0 if electrode is None else electrode
-		t = 12 if electrode is None else electrode + 1
-
-		# you can only modify the thresholds when in stop mode
-		config = self._register8(94)
-		if config != 0:
-			self._register8(94, 0)
-
-		for i in range(f, t):
-			self._register8(65 + i * 2, touch)
-			self._register8(66 + i * 2, release)
-
-		# re
+	def _register16(self, register, value=None):
+		if value is None:
+			data = self.i2c.rea

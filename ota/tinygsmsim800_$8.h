@@ -1,25 +1,14 @@
-16_t*)text;
-    for (size_t i=0; i<len; i++) {
-      uint8_t c = t[i] >> 8;
-      if (c < 0x10) { stream.print('0'); }
-      stream.print(c, HEX);
-      c = t[i] & 0xFF;
-      if (c < 0x10) { stream.print('0'); }
-      stream.print(c, HEX);
+    return "";
     }
-    stream.write((char)0x1A);
-    stream.flush();
-    return waitResponse(60000L) == 1;
+    String res = stream.readStringUntil('\n');
+    waitResponse();
+    res.trim();
+    return res;
   }
 
-
-  /*
-   * Location functions
-   */
-
-  String getGsmLocation() {
-    sendAT(GF("+CIPGSMLOC=1,1"));
-    if (waitResponse(10000L, GF(GSM_NL "+CIPGSMLOC:")) != 1) {
+  String getIMEI() {
+    sendAT(GF("+GSN"));
+    if (waitResponse(GF(GSM_NL)) != 1) {
       return "";
     }
     String res = stream.readStringUntil('\n');
@@ -28,65 +17,25 @@
     return res;
   }
 
-  /*
-   * Time functions
-   */
-  String getGSMDateTime(TinyGSMDateTimeFormat format) {
-    sendAT(GF("+CCLK?"));
-    if (waitResponse(2000L, GF(GSM_NL "+CCLK: \"")) != 1) {
-      return "";
+  SimStatus getSimStatus(unsigned long timeout = 10000L) {
+    for (unsigned long start = millis(); millis() - start < timeout; ) {
+      sendAT(GF("+CPIN?"));
+      if (waitResponse(GF(GSM_NL "+CPIN:")) != 1) {
+        delay(1000);
+        continue;
+      }
+      int status = waitResponse(GF("READY"), GF("SIM PIN"), GF("SIM PUK"), GF("NOT INSERTED"));
+      waitResponse();
+      switch (status) {
+      case 2:
+      case 3:  return SIM_LOCKED;
+      case 1:  return SIM_READY;
+      default: return SIM_ERROR;
+      }
     }
-
-    String res;
-
-    switch(format) {
-      case DATE_FULL:
-        res = stream.readStringUntil('"');
-      break;
-      case DATE_TIME:
-        streamSkipUntil(',');
-        res = stream.readStringUntil('"');
-      break;
-      case DATE_DATE:
-        res = stream.readStringUntil(',');
-      break;
-    }
-    return res;
+    return SIM_ERROR;
   }
 
-  /*
-   * Battery functions
-   */
-  // Use: float vBatt = modem.getBattVoltage() / 1000.0;
-  uint16_t getBattVoltage() {
-    sendAT(GF("+CBC"));
-    if (waitResponse(GF(GSM_NL "+CBC:")) != 1) {
-      return 0;
-    }
-    streamSkipUntil(','); // Skip
-    streamSkipUntil(','); // Skip
-
-    uint16_t res = stream.readStringUntil(',').toInt();
-    waitResponse();
-    return res;
-  }
-
-  int getBattPercent() {
-    sendAT(GF("+CBC"));
-    if (waitResponse(GF(GSM_NL "+CBC:")) != 1) {
-      return false;
-    }
-    stream.readStringUntil(',');
-    int res = stream.readStringUntil(',').toInt();
-    waitResponse();
-    return res;
-  }
-
-protected:
-
-  bool modemConnect(const char* host, uint16_t port, uint8_t mux, bool ssl = false) {
-    int rsp;
-#if !defined(TINY_GSM_MODEM_SIM900)
-    sendAT(GF("+CIPSSL="), ssl);
-    rsp = waitResponse();
-    if (
+  RegStatus getRegistrationStatus() {
+    sendAT(GF("+CREG?"));
+    if (waitResponse(GF(GSM_NL "+CREG:")) 

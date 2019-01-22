@@ -1,59 +1,18 @@
-from machine import UART
-from time import *
-from _thread import *
-import Blocky.uasyncio as asyncio
-mainthread = asyncio.get_event_loop()
-
-import gc,sys
-# Routine classes
-	# _jEvent , _jCommand , _jRequest , _jPolling
-	"""
-		_jEvent :
-			-> Handle task data that come from SIM800 without being asked.
-			=> Typical use is +CIPRXGET: 1,1 (SIM800 notify that socket 1 received a msg)
-			For this kind , the keyword is the whole "+CIPRXGET: 1,1"
-			Save it to self._lEvent
-		_jCommand :
-			-> Handle command , you send a command , you provide what the module might answer
-			as a list , this function return the index of that answer in the list
-		_jRequest :
-			-> Requesting  a data field . Get the data.
-		_jPolling :
-			Definging 
-			
-		_jCommand and _jRequest is a closed. The module will reply right away and only one of each is allow to be active
-		But , _jEvent can occur at any time , therefore it might get into the buffer that these two function are handling
-		Therefore , the method is to check if any event string is inside 
-		buf = 'joijwoijfjojwiefOKijweogiweG+CIPRXGET:1,1\n\n\aofijqoijg'
-		
-	"""
+#version=1.0
+#hash=1123
+import sys;core=sys.modules['Blocky.Core'];from micropython import const;from time import ticks_ms as tm;from time import ticks_diff as td;from time import sleep_ms as ts;from machine import UART;s=core.asyncio.sleep_ms;i=isinstance;p=print
+F=False;T=True;N=None
+def b (d):
+	if i(d,bytearray):
+		return bytes(d)
+	elif i(d,str):
+		return bytes(d,'utf-8')
+	elif i(d,bytes) or i(d,int):
+		return d
 class SIM800:
-	def __init__(self):
-		self.uart = UART(1,rx=25,tx=26,baudrate=9600)
-		self.buf =  b''
-		self.running = False
-		self.echo = b''
-		self.dict = {} # this is where change saved
-		self.responselist = [] # ['OK','ERROR']
-		self.waitinglist = [b'+CPIN',b'Call Ready',b'SMS Ready',b'RDY']	# ['SMS Ready','Call Ready']
-		self.data = b''
-		self.sendtime = ticks_ms()
-		self.writer = asyncio.StreamWriter(self.uart,{})
-		self.reader = asyncio.StreamReader(self.uart)
-		mainthread.create_task(self.routine())
-		
-	def write(self,cmd):
-		if isinstance(cmd,str):
-			buf = b'AT' + bytes(cmd,'utf-8') + b'\r\n'
-			self.echo = b'AT' + bytes(cmd,'utf-8') + b'\r\r\n' #TODO
-		elif isinstance(cmd,bytes):
-			buf = b'AT' + cmd + b'\r\n'
-			self.echo = b'AT' + cmd + b'\r\r\n'
-		else :
-			raise Exception
-			return
-		print('\t\t[WRITE]' , buf)
-		self.uart.write(buf)
-		self.sendtime = ticks_ms()
-	
-	
+	def __init__(self,port,setting,gprs=F,debug=F):
+		self.port=port;self.p=core.getPort(self.port);self.d=debug;self.s=setting;self.fc=F;self.b=b'';self.fr=F;self.fp=F;self.le={};self.lr=N;self.lc=N;self.a=F;self.ls=[N for _ in range(6)]
+		self.AF_INET=2;self.AF_INET6=10;self.IPPROTO_IP=0;self.IPPROTO_TCP=6;self.IPPROTO_UDP=17;self.IP_ADD_MEMBERSHIP=3;self.SOCK_DGRAM=2;self.SOCK_RAW=3;self.SOCK_STREAM=1;self.SOL_SOCKET=4095;self.SO_REUSEADDR=4;self.fc=F
+		if core.ext_socket==None  or not core.ext_socket.isconnected():
+			ext=core.eeprom.get('EXT_SOCKET')
+			if ex

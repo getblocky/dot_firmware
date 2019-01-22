@@ -1,25 +1,31 @@
-t self.command('+CIICR')
-		await self.request('+CIFSR')
-		#await self.command('+CMEE=2')
-		#await self.command('+CIFSR;E0',prefix = '11.185.172.8')
-		await self.command('+CDNSCFG="203.113.131.1"')
-		
-		#await self.command('+CIPSSL=1')
-		# modemConnect
-		#r = await self.command('+CIPSTART=1,"TCP","blynk.getblocky.com",9443',prefix = ["1, CONNECT OK","CONNECT FAIL","ALREADY CONNECT","ERROR","CLOSE OK"])
-		r = await self.command('+CIPSTART=1,"UDP","blynk.getblocky.com",80',prefix = ["1, CONNECT OK","CONNECT FAIL","ALREADY CONNECT","ERROR","CLOSE OK"])
-		if r == 0 :
-			print('[Blynk] Connect successfully !')
-ext_socket = SIM800()
-sim = ext_socket
-
-
-
-
-mainthread.create_task(main())
-mainthread.run_forever()
-start_new_thread(mainthread.run_forever,())
-		
-		
-		
-			
+onselist:
+					self.responselist = self.responselist.index(cmd)
+					#print('<recv> Reponse = {}'.format(self.responselist))
+				elif cmd in self.waitinglist:
+					if cmd in self.waitinglist : # Damn you CIFSR
+						self.waitinglist.remove(cmd)
+						self.dict[cmd] = ans
+						if len(data):
+							data = data[0:-5]
+							self.dict[cmd].append(data)
+					else :
+						print('No prefix' , self.echo, cmd)
+				else :
+					prefix = self.echo[2:-3]
+					if prefix in self.waitinglist:
+						self.waitinglist.remove(prefix)
+					self.dict[prefix] = cmd
+					#print('<recv> Request = {}'.format(self.dict[cmd]))
+				self.buf = b''
+				
+			if self.uart.any() > 0:
+				self.buf = self.uart.read()
+	async def sendSMS(self,number,message):
+		#print('Sending SMS to ', number)
+		await self.command('+CMGF=1')
+		await self.command('+CSCS="GSM"')
+		await self.command('+CMGS="{}"'.format(number),prefix=['>'])
+		#print('Message = ',message)
+		self.uart.write(message)
+		self.uart.write(bytearray([0x1A]))
+		#pri

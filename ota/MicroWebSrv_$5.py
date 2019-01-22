@@ -1,66 +1,36 @@
-def _writeEndHeader(self) :
-			self._write("\r\n")
+==============
+	
+	class _client :
 		
-		#def _writeBeforeContent(self, code, headers, contentType, contentCharset, contentLength) :
-		#	pass		
+		def __init__(self, microWebSrv, socket, addr) :
+			socket.settimeout(2)
+			self._microWebSrv	 = microWebSrv
+			self._socket		= socket
+			self._addr			= addr
+			self._method		= None
+			self._path			= None
+			self._httpVer		 = None
+			self._resPath		 = "/"
+			self._queryString	 = ""
+			self._queryParams	 = { }
+			self._headers		 = { }
+			self._contentType	 = None
+			self._contentLength = 0
+			#await self._processRequest()
 		
-		def WriteSwitchProto(self, upgrade, headers=None) :
-			self._writeFirstLine(101)
-			self._writeHeader("Connection", "Upgrade")
-			self._writeHeader("Upgrade",	upgrade)
-			if isinstance(headers, dict) :
-				for header in headers :
-					self._writeHeader(header, headers[header])
-		
-		def WriteResponse(self, code, headers, contentType, contentCharset, content) :
+		def _processRequest(self) :
 			try :
-				
-				if isinstance(content , str) or isinstance(content , bytes):
-					contentLength = len(content) if content else 0
-					print('LEN ' , contentLength , contentCharset , contentType )
-				elif isinstance(content , list):
-					contentLength = 0
-					for x in content :
-						contentLength+= len(x)
-				else :
-					contentLength = 0
-				#self._writeBeforeContent(code, headers, contentType, contentCharset, contentLength)
-				
-				self._writeFirstLine(code)
-				if isinstance(headers, dict) :
-					for header in headers :
-						self._writeHeader(header, headers[header])
-				
-				if contentLength > 0 :
-					#self._writeContentTypeHeader(contentType, contentCharset)
-					ct = None
-					
-					if contentType :
-						
-						ct = contentType \
-							 + (("; charset=%s" % contentCharset) if contentCharset else "")
-						
-					else :
-						ct = "application/octet-stream"
-					self._writeHeader("Content-Type", ct)
-					self._writeHeader("Content-Length", contentLength)
-				
-				self._writeHeader("Server", "MicroWebSrv by JC`zic")
-				self._writeHeader("Connection", "close")
-				self._write("\r\n")	#self._writeEndHeader()
-				
-				if contentLength > 0 :
-					self._write(content)
-					print('_write',len(content))
-				
-				return True
-			except MemoryError as err:
-				print('mwsr->wR',err)
-				return False
-			except Exception as err :
-				import sys
-				sys.print_exception(err)
-				
-		
-
-		def WriteResponseOk(self, headers=None, contentType=None, contentCh
+				response = MicroWebSrv._response(self)
+				if self._parseFirstLine(response) :
+					if self._parseHeader(response) :
+						upg = self._getConnUpgrade()
+						if not upg :
+							routeHandler = self._microWebSrv.GetRouteHandler(self._resPath, self._method)
+							if routeHandler :
+								#routeHandler(self, response)
+								#loop = asyncio.get_event_loop()
+								#loop.create_task(routeHandler(self,response))
+								routeHandler(self,response)
+							
+							else :
+								response.W

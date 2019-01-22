@@ -1,60 +1,38 @@
-onselist:
-					self.responselist = self.responselist.index(cmd)
-					#print('<recv> Reponse = {}'.format(self.responselist))
-				elif cmd in self.waitinglist:
-					if cmd in self.waitinglist : # Damn you CIFSR
-						self.waitinglist.remove(cmd)
-						self.dict[cmd] = ans
-						if len(data):
-							data = data[0:-5]
-							self.dict[cmd].append(data)
-					else :
-						print('No prefix' , self.echo, cmd)
-				else :
-					prefix = self.echo[2:-3]
-					if prefix in self.waitinglist:
-						self.waitinglist.remove(prefix)
-					self.dict[prefix] = cmd
-					#print('<recv> Request = {}'.format(self.dict[cmd]))
-				self.buf = b''
-				
-			if self.uart.any() > 0:
-				self.buf = self.uart.read()
-	async def sendSMS(self,number,message):
-		#print('Sending SMS to ', number)
-		await self.command('+CMGF=1')
-		await self.command('+CSCS="GSM"')
-		await self.command('+CMGS="{}"'.format(number),prefix=['>'])
-		#print('Message = ',message)
-		self.uart.write(message)
-		self.uart.write(bytearray([0x1A]))
-		#print('Done')
-	async def http(self,link):
-		r = await self.request('+CFUN?')
-		if r[0] == 1:
-			print('CFUN Ready')
-		r = await self.request('+CGATT?')
-		if r[0] == 1:
-			print('CGATT Ready')
-		await self.command('+SAPBR=3,1,"Contype","GPRS"')
-		await self.command('+SAPBR=3,1,"APN","v-internet"')
-		await self.command('+SAPBR=1,1')
-		await self.command('+HTTPINIT')
-		await self.command('+HTTPPARA="URL","{}"'.format(link))
-		await self.command('+HTTPPARA="CID",1'.format(link))
-		r = await self.request('+HTTPACTION=0'.format(link))
-		#print('HTTP Received' , r)
-		r = await self.request('+HTTPREAD')
-		#print('====Content======')
-		#print(r)
-		#print('=================')
+lse
+		print(r)
+		return r
 		
-	# What blynk need :)
-	def __repr__(self):
-		print('WaitingList = ' , self.waitinglist)
-		print('ResponseList = ' , self.responselist)
-		print('Dictionary = ' , self.dict)
-		print('EchoEcho = ' , self.echo)
-	async def settimeout(self,timeout):
-		print('[SIM800] Set Timeout = {}'.format(timeout))
-	async def recv(self,size):
+		
+	async def request(self,cmd,prefix = None,timeout = 1000):
+		# Make sure the module is ready
+		
+		print('\t[SIM800] Request',cmd,end='')
+		if prefix == None :
+			prefix = ''
+			for x in range(len(cmd)):
+				if cmd[x].isalpha() or cmd[x] == '+':
+					prefix += cmd[x]
+				else :
+					break
+			prefix = bytes(prefix,'utf-8')
+		else :
+			if isinstance(prefix,str):
+				prefix = bytes(prefix,'utf-8')
+			
+		cmd= bytes(cmd,'utf-8') if isinstance(cmd,str) else cmd
+		await self.waitReady(timeout)
+		#print('Requesting [{}] [{}]'.format(cmd,prefix))
+		self.write(cmd)
+		if not prefix in self.waitinglist:
+			self.waitinglist.append(prefix)
+		while prefix in self.waitinglist:
+			await asyncio.sleep_ms(1)
+			#print('>',end='')
+		#print('\t <<< Return [{}]'.format(self.dict[prefix]))
+		self.running = False
+		print("\t[SIM800] Request Done -> ",self.dict[prefix])
+		return self.dict.pop(prefix)
+		
+	async def getSignalQuality(self):
+		r = await self.request('+CSQ')
+		return 

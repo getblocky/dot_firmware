@@ -1,35 +1,39 @@
- colon:
-			segments[1] |= 128
-		self.write(segments[:4])
+			sleep_us(TM1637_DELAY)
+		self.clk(0)
+		sleep_us(TM1637_DELAY)
+		self.clk(1)
+		sleep_us(TM1637_DELAY)
+		self.clk(0)
+		sleep_us(TM1637_DELAY)
 
-	def scroll(self, string, delay=250):
-		segments = string if isinstance(string, list) else self.encode_string(string)
-		data = [0] * 8
-		data[4:0] = list(segments)
-		for i in range(len(segments) + 5):
-			self.write(data[0+i:4+i])
-			sleep_ms(delay)
+	def brightness(self, val=None):
+		"""Set the display brightness 0-7."""
+		# brightness 0 = 1/16th pulse width
+		# brightness 7 = 14/16th pulse width
+		if val is None:
+			return self._brightness
+		if not 0 <= val <= 7:
+			raise ValueError("Brightness out of range")
 
+		self._brightness = val
+		self._write_data_cmd()
+		self._write_dsp_ctrl()
 
-class TM1637Decimal(TM1637):
-	"""Library for quad 7-segment LED modules based on the TM1637 LED driver.
+	def write(self, segments, pos=0):
+		"""Display up to 6 segments moving right from a given position.
+		The MSB in the 2nd segment controls the colon between the 2nd
+		and 3rd segments."""
+		if not 0 <= pos <= 5:
+			raise ValueError("Position out of range")
+		self._write_data_cmd()
+		self._start()
 
-	This class is meant to be used with decimal display modules (modules
-	that have a decimal point after each 7-segment LED).
-	"""
+		self._write_byte(TM1637_CMD2 | pos)
+		for seg in segments:
+			self._write_byte(seg)
+		self._stop()
+		self._write_dsp_ctrl()
 
-	def encode_string(self, string):
-		"""Convert a string to LED segments.
-
-		Convert an up to 4 character length string containing 0-9, a-z,
-		space, dash, star and '.' to an array of segments, matching the length of
-		the source string."""
-		segments = bytearray(len(string.replace('.','')))
-		j = 0
-		for i in range(len(string)):
-			if string[i] == '.' and j > 0:
-				segments[j-1] |= TM1637_MSB
-				continue
-			segments[j] = self.encode_char(string[i])
-			j += 1
-		return segments
+	def encode_digit(self, digit):
+		"""Convert a character 0-9, a-f to a segment."""
+		re

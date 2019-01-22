@@ -1,68 +1,42 @@
-ssl && rsp != 1) {
-      return false;
+!= 1) {
+      return REG_UNKNOWN;
     }
-#endif
-    sendAT(GF("+CIPSTART="), mux, ',', GF("\"TCP"), GF("\",\""), host, GF("\","), port);
-    rsp = waitResponse(75000L,
-                       GF("CONNECT OK" GSM_NL),
-                       GF("CONNECT FAIL" GSM_NL),
-                       GF("ALREADY CONNECT" GSM_NL),
-                       GF("ERROR" GSM_NL),
-                       GF("CLOSE OK" GSM_NL)   // Happens when HTTPS handshake fails
-                      );
-    return (1 == rsp);
-  }
-
-  int modemSend(const void* buff, size_t len, uint8_t mux) {
-    sendAT(GF("+CIPSEND="), mux, ',', len);
-    if (waitResponse(GF(">")) != 1) {
-      return 0;
-    }
-    stream.write((uint8_t*)buff, len);
-    stream.flush();
-    if (waitResponse(GF(GSM_NL "DATA ACCEPT:")) != 1) {
-      return 0;
-    }
-    streamSkipUntil(','); // Skip mux
-    return stream.readStringUntil('\n').toInt();
-  }
-
-  size_t modemRead(size_t size, uint8_t mux) {
-#ifdef TINY_GSM_USE_HEX
-    sendAT(GF("+CIPRXGET=3,"), mux, ',', size);
-    if (waitResponse(GF("+CIPRXGET:")) != 1) {
-      return 0;
-    }
-#else
-    sendAT(GF("+CIPRXGET=2,"), mux, ',', size);
-    if (waitResponse(GF("+CIPRXGET:")) != 1) {
-      return 0;
-    }
-#endif
-    streamSkipUntil(','); // Skip mode 2/3
-    streamSkipUntil(','); // Skip mux
-    size_t len = stream.readStringUntil(',').toInt();
-    sockets[mux]->sock_available = stream.readStringUntil('\n').toInt();
-
-    for (size_t i=0; i<len; i++) {
-#ifdef TINY_GSM_USE_HEX
-      while (stream.available() < 2) { TINY_GSM_YIELD(); }
-      char buf[4] = { 0, };
-      buf[0] = stream.read();
-      buf[1] = stream.read();
-      char c = strtol(buf, NULL, 16);
-#else
-      while (!stream.available()) { TINY_GSM_YIELD(); }
-      char c = stream.read();
-#endif
-      sockets[mux]->rx.put(c);
-    }
+    streamSkipUntil(','); // Skip format (0)
+    int status = stream.readStringUntil('\n').toInt();
     waitResponse();
-    return len;
+    return (RegStatus)status;
   }
 
-  size_t modemGetAvailable(uint8_t mux) {
-    sendAT(GF("+CIPRXGET=4,"), mux);
-    size_t result = 0;
-    if (waitResponse(GF("+CIPRXGET:")) == 1) {
-     
+  String getOperator() {
+    sendAT(GF("+COPS?"));
+    if (waitResponse(GF(GSM_NL "+COPS:")) != 1) {
+      return "";
+    }
+    streamSkipUntil('"'); // Skip mode and format
+    String res = stream.readStringUntil('"');
+    waitResponse();
+    return res;
+  }
+
+  /*
+   * Generic network functions
+   */
+
+  int getSignalQuality() {
+    sendAT(GF("+CSQ"));
+    if (waitResponse(GF(GSM_NL "+CSQ:")) != 1) {
+      return 99;
+    }
+    int res = stream.readStringUntil(',').toInt();
+    waitResponse();
+    return res;
+  }
+
+  bool isNetworkConnected() {
+    RegStatus s = getRegistrationStatus();
+    return (s == REG_OK_HOME || s == REG_OK_ROAMING);
+  }
+
+  bool waitForNetwork(unsigned long timeout = 60000L) {
+    for (unsigned long start = millis(); millis() - start < timeout; ) {
+      if (isNetworkConnec

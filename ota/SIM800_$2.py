@@ -1,64 +1,31 @@
-(self):
-		r = await self.request('+CSQ')
-		return r
-			
+ [b' ',b'+',b','] or d[x:x+1].isalpha() or d[x:x+1].isdigit():
+					w +=d[x:x+1]
+		elif i(w,str)or i(w,bytearray):
+			w=b(w)
+		self.lr=w;st=tm();await self.write((b'AT' if d.startswith(b'+') else b'')+d+(b'\r\n' if d.startswith(b'+') else b''));self.fp=T
+		while self.lr==w:
+			self.j()
+			if self.u.any()==0 and len(self.b):
+				self.j()
+			if self.u.any() > 0:
+				self.b +=self.u.read()
+			if td(tm(),st)>to:
+				self.fr=F;self.fp=F;raise OSError
+		self.fr=F;self.fp=F;return self.lr
+	async def w(self,d,to=60000):
+		d=b(d);self.le[d]=N;st=tm()
+		while self.le[d]==N:
+			await s(50)
+			if td(tm(),st) > to:
+				self.le.pop(d);raise OSError
+		return self.le.pop(d)
+	async def c(self,d,r=[b'OK',b'ERROR'],to=10000):
+		while self.fr==T:
+			await s(50)
+		self.fr=T;d=b(d);self.lc=r
+		for x in range(len(self.lc)):
+			self.lc[x]=b(self.lc[x])
+		if self.u.any()>0:
+			self.b+=self.u.read();self.j()
+		await self.write((b'AT' if d.startswith(b'+') else b'')+d+(b'\r\n' if d.startswith(b'+') else b''))
 		
-	async def routine(self):
-		# In harmonic with command and request
-		self.buf = b''
-		while True :
-			await asyncio.sleep_ms(5)
-			if self.uart.any() == 0 and len(self.buf) > 0:
-				if self.buf.startswith(self.echo):
-					self.buf = self.buf[len(self.echo):]
-				while self.buf.startswith(b'\r\n'):
-					self.buf = self.buf[2:]
-				resp = self.buf[0:self.buf.find(b'\r\n')]
-				data = self.buf[self.buf.find(b'\r\n')+2:self.buf.rfind(b'\r\n\r\nOK\r')]
-				# resp contains cmd and ans , see +HTTPREAD
-				if resp.count(b': '):
-					cmd,ans = resp.split(b': ')
-				else :
-					cmd = resp
-					ans = b''
-				ans = ans.split(b',') if ans.count(b',') else [ans]
-				for x in range(len(ans)):
-					try :
-						ans[x] = int(ans[x]) if ans[x].count(b'.') == 0 else float(ans[x])
-					except :
-						pass
-					
-				print('\t\t[SIM800] Receive ',self.buf)
-				print('\t\t\tCommand =  ',cmd)
-				print('\t\t\tAnswer =  ',ans)
-				print('\t\t\tData =  ',data)
-				
-				
-				#print('<raw>',cmd,ans,resp,data)
-				if isinstance(self.responselist,list) and cmd in self.responselist:
-					self.responselist = self.responselist.index(cmd)
-					#print('<recv> Reponse = {}'.format(self.responselist))
-				elif cmd in self.waitinglist:
-					if cmd in self.waitinglist : # Damn you CIFSR
-						self.waitinglist.remove(cmd)
-						self.dict[cmd] = ans
-						if len(data):
-							data = data[0:-5]
-							self.dict[cmd].append(data)
-					else :
-						print('No prefix' , self.echo, cmd)
-				else :
-					prefix = self.echo[2:-3]
-					if prefix in self.waitinglist:
-						self.waitinglist.remove(prefix)
-					self.dict[prefix] = cmd
-					#print('<recv> Request = {}'.format(self.dict[cmd]))
-				self.buf = b''
-				
-			if self.uart.any() > 0:
-				self.buf = self.uart.read()
-	async def sendSMS(self,number,message):
-		#print('Sending SMS to ', number)
-		await self.command('+CMGF=1')
-		await self.command('+CSCS="GSM"')
-		await self.command('+CMGS="{}"'.format(number
