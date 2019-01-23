@@ -30,7 +30,7 @@ def get_list_library(file):
 	for line in cell :
 		library = ''
 		version = 0.0
-		if line.startswith('from '):
+		if line.startswith('from ') or line.startswith('import '):
 			library = line.split('.')[1].split(' ')[0]
 			if '#version' in line :
 				print('line',line,line.split('=')[1])
@@ -42,5 +42,4 @@ def get_list_library(file):
 def get_library_version(lib):
 	if '{}.py'.format(lib) not in os.listdir('Blocky'):
 		return None
-	line = ''
-	f = open('Blocky/{}.
+	l

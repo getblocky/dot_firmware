@@ -1,4 +1,5 @@
-py'.format(lib))
+ine = ''
+	f = open('Blocky/{}.py'.format(lib))
 	while True :
 		temp = f.read(1)
 		if len(temp) == 0 or temp == '\n' or temp == '\r':
