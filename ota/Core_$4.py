@@ -1,4 +1,6 @@
-ine = ''
+f '{}.py'.format(lib) not in os.listdir('Blocky'):
+		return None
+	line = ''
 	f = open('Blocky/{}.py'.format(lib))
 	while True :
 		temp = f.read(1)

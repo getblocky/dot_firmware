@@ -28,18 +28,19 @@ def get_list_library(file):
 	cell = cell.split('\n')
 	r = []
 	for line in cell :
-		library = ''
-		version = 0.0
-		if line.startswith('from ') or line.startswith('import '):
-			library = line.split('.')[1].split(' ')[0]
-			if '#version' in line :
-				print('line',line,line.split('=')[1])
-				version = float(line.split('=')[1])
-			r.append([library,version])
+		try :
+			library = ''
+			version = 0.0
+			if line.startswith('from ') or line.startswith('import ') or line.startswith('#require '):
+				library = line.split('.')[1].split(' ')[0]
+				if '#version' in line :
+					print('line',line,line.split('=')[1])
+					version = float(line.split('=')[1])
+				r.append([library,version])
+		except :
+			pass
 	f.close()
 	return r
 
 def get_library_version(lib):
-	if '{}.py'.format(lib) not in os.listdir('Blocky'):
-		return None
-	l
+	i
