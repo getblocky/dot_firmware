@@ -1,17 +1,16 @@
-ue:
-				x |= mask         # If x was True, set the bit indicated by the mask.
+ mask         # If x was True, set the bit indicated by the mask.
 			return x
 		else:
 			return 1 if x & 2 ** n != 0  else 0
-	
-	
+
+
 	def _clear(self):
 		# clear
 		self.length = 0
 		for x in range(len(self.buffer)):
 			self.buffer[x] = 0
 		self.prev_irq = 0
-	
+
 	def learn(self , name):
 		try :
 			self.last_state = self.recv.value()
@@ -37,4 +36,5 @@ ue:
 			bit_mask = 0
 			for x in range(bit_length):
 				bit_mask += 2**x
-			bit_prev = sel
+			bit_prev = self._decode()
+			

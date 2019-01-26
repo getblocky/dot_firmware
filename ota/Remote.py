@@ -13,25 +13,26 @@ class Remote:
 		self.buffer = bytearray(1000)
 		self.bin = 0
 		self.length = 0
-		
+
 		# Initialize Timing Property
 		self.prev_irq = 0
 		self.time = 0
-		
+
 		# Initialize User Interface
-		self.learning = None 
+		self.learning = None
 		self.event_list = {}
-		
+
 		self.last_state = 1
 		core.mainthread.create_task(core.asyn.Cancellable(self._routine)())
-		
+
 		try :
 			core.os.mkdir("IR")
 		except OSError:
 			pass
-			
+
 	def _bit(self , x , n , value = None):
 		if value != None:
 			mask = 1 << n   # Compute mask, an integer with just bit 'index' set.
 			x &= ~mask          # Clear the bit indicated by the mask (if x is False)
-			if val
+			if value:
+				x |=

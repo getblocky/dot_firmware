@@ -1,8 +1,9 @@
-#version=2.0
+#version=2.1
 # AN2001
 import sys
 core = sys.modules['Blocky.Core']
 from dht import *
+from machine import Pin
 
 class Weather:
 	def __init__ (self , port,module='DHT11'):

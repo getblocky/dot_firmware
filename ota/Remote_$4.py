@@ -1,4 +1,16 @@
-			
+pos = 0
+		length = self.length
+		while True :
+			if (self.buffer[0] < self.buffer[1] and self.buffer[0] *2 < self.buffer[1]) or self.buffer[0] > 20000:
+				print('correct')
+				length -= 1
+				for x in range(0 , length):
+					self.buffer[x] = self.buffer[x+1]
+			else :
+				break
+
+
+
 	@core.asyn.cancellable
 	async def _routine (self):
 		while True :
@@ -15,17 +27,7 @@
 					name = self._recognise(self.bin)
 					if name :
 						core.mainthread.call_soon(core.call_once("user_remote_{}_{}".format(self.port, name),self.event_list[name][1]))
-				
+
 				self._debug()
 				sleep_ms(1000)
-				self.send(self.buffer , self.length)
-				self.length = 0
-				self.prev_irq = 0
-				for x in range(len(self.buffer)):
-					self.buffer[x] = 0
-				self._recvActive(True)
-			
-	
-	def _debug(self):
-		print("__________________RECV	{}	______ {} _______".format(self.length , self.bin))
-		for x 
+				self.send(se
