@@ -23,10 +23,10 @@ class Servo:
         self.freq = freq
         self.angle = angle
 		self.port = port
+        self.currentAngle = 0
 		self.p = core.getPort(port)
         self.pwm = PWM(Pin(self.p[0]), freq=freq, duty=0)
 		core.deinit_list.append(self)
 
     def write_us(self, us):
-        """Set the signal to be ``us`` microseconds long. Zero disables it."""
-  
+        """Set the signal to be ``us`` microseconds
