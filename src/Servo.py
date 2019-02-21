@@ -1,4 +1,4 @@
-#version=2.1
+#version=2.2
 
 import sys;core=sys.modules['Blocky.Core']
 from machine import PWM , Pin
@@ -35,7 +35,10 @@ class Servo:
 			return
 		us = min(self.max_us, max(self.min_us, us))
 		duty = us * 1024 * self.freq // 1000000
-		self.pwm.duty(duty)
+		try :
+			self.pwm.duty(int(duty))
+		except :
+			pass
 
 	def angle(self, degrees=None, radians=None):
 		"""Move to the specified angle in ``degrees`` or ``radians``."""

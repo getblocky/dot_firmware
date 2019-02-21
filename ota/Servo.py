@@ -1,4 +1,4 @@
-#version=2.1
+#version=2.2
 
 import sys;core=sys.modules['Blocky.Core']
 from machine import PWM , Pin

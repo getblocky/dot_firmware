@@ -1,6 +1,9 @@
 s, max(self.min_us, us))
 		duty = us * 1024 * self.freq // 1000000
-		self.pwm.duty(duty)
+		try :
+			self.pwm.duty(int(duty))
+		except :
+			pass
 
 	def angle(self, degrees=None, radians=None):
 		"""Move to the specified angle in ``degrees`` or ``radians``."""
