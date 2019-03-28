@@ -1,4 +1,9 @@
-lf,buffer):
+s(3000)
+
+            core._failsafeActive(True)
+            return
+            # animation
+    def _valid(self,buffer):
         for i in buffer :
             if i < 200 :
                 return False

@@ -63,6 +63,11 @@ class InfraredRemote :
                 led.fill((0,i,0));led.write()
                 sleep_ms(10)
             led.fill((0,0,0));led.write()
+            
+            for i in range(3):
+                self.send(name)
+                sleep_ms(3000)
+
             core._failsafeActive(True)
             return
             # animation

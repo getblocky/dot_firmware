@@ -22,7 +22,7 @@
                 led.fill((0,i,0));led.write()
                 sleep_ms(10)
             led.fill((0,0,0));led.write()
-            core._failsafeActive(True)
-            return
-            # animation
-    def _valid(se
+            
+            for i in range(3):
+                self.send(name)
+                sleep_m
