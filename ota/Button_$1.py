@@ -1,4 +1,4 @@
-rint('hold for ' , (self.his[-1] - self.his[-2] )// 1000 ,'seconds')
+		print('hold for ' , (self.his[-1] - self.his[-2] )// 1000 ,'seconds')
 			self.execute('hold' ,  (self.his[-1] - self.his[-2] )// 1000 )
 			self.his.clear()
 	@core.asyn.cancellable

@@ -15,6 +15,7 @@ class Button:
 		self.ps = 0
 		self.lt = {}
 		self.his = []
+		
 		self.button = Pin(self.p[0] , Pin.IN , Pin.PULL_DOWN)
 		self.button.irq(trigger = Pin.IRQ_RISING|Pin.IRQ_FALLING , handler = self._handler)
 		core.deinit_list.append(self)
