@@ -1,4 +1,8 @@
-s(3000)
+        self.send(name)
+                led.fill((0,0,0));led.write()
+
+                sleep_ms(3000)
+
 
             core._failsafeActive(True)
             return

@@ -1,4 +1,4 @@
-          pulse = time_pulse_us(self.recv,state,100000)
+          pulse = time_pulse_us(self.recv,state,200000)
                 buffer.append(pulse)
                 state = not state
             buffer.pop() 
@@ -24,5 +24,5 @@
             led.fill((0,0,0));led.write()
             
             for i in range(3):
-                self.send(name)
-                sleep_m
+                led.fill((0,20,0));led.write()
+        

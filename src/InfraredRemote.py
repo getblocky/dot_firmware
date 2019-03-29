@@ -39,7 +39,7 @@ class InfraredRemote :
             pulse = 0
             state = 0
             while pulse > -1 :
-                pulse = time_pulse_us(self.recv,state,100000)
+                pulse = time_pulse_us(self.recv,state,200000)
                 buffer.append(pulse)
                 state = not state
             buffer.pop() 
@@ -65,8 +65,12 @@ class InfraredRemote :
             led.fill((0,0,0));led.write()
             
             for i in range(3):
+                led.fill((0,20,0));led.write()
                 self.send(name)
+                led.fill((0,0,0));led.write()
+
                 sleep_ms(3000)
+
 
             core._failsafeActive(True)
             return
